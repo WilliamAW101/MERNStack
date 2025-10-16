@@ -58,6 +58,14 @@ const results = await db.collection('Users').find({Login:login,Password:password
 var id = -1;
 var fn = '';
 var ln = '';
+
+if( results.length > 0 )
+{
+id = results[0].UserID;
+fn = results[0].FirstName;
+ln = results[0].LastName;
+}
+
 if( login.toLowerCase() == 'rickl' && password == 'COP4331' )
 {
 id = 1;
@@ -68,13 +76,6 @@ else
 {
 error = 'Invalid user name/password';
 }
-if( results.length > 0 )
-{
-id = results[0].UserID;
-fn = results[0].FirstName;
-ln = results[0].LastName;
-}
-
 var ret = { id:id, firstName:fn, lastName:ln, error:''};
 res.status(200).json(ret);
 });
