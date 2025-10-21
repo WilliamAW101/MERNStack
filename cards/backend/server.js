@@ -92,10 +92,9 @@ app.post('/api/login', async (req, res) => {
 app.post('/api/signup', async (req, res) => {
     let error = '';
     try {
-        // Payload receiving: login, password
-        // Payload sending: id, firstName, lastName, error
-        // I will change if need be for frontend
-        const {
+
+        // payload receiving
+        const requiredFields = {
             userName,
             password,
             email,
@@ -104,15 +103,8 @@ app.post('/api/signup', async (req, res) => {
             lastName
         } = req.body;
 
-        const requiredFields = {
-            userName,
-            password,
-            email,
-            phone,
-            firstName,
-            lastName
-        };
 
+        // ceck to see if everything is filled out
         const missingFields = Object.entries(requiredFields)
             .filter(([, value]) => value === undefined || value === null || value === '')
             .map(([key]) => key);
@@ -123,15 +115,14 @@ app.post('/api/signup', async (req, res) => {
             });
         }
 
-        const normalizedEmail = (email || '').trim().toLowerCase();
+        // validate email format
+        const normalizedEmail = (email || '').trim().toLowerCase(); // looks like most providers do not care about case sensitivity, can change if need be
         if (!validator.isEmail(normalizedEmail)) { return res.status(400).json({ error: 'Invalid email format' }); }
         
 
         // database info
         const db = client.db(process.env.DATABASE);
         const collection = db.collection('user'); // I really dont think we need to hide collection name
-        console.log(hashPass, verifyPass);
-
         if (collection == null) {
           error = 'Database connection error';
           return res.status(500).json({ error });
@@ -149,7 +140,7 @@ app.post('/api/signup', async (req, res) => {
         const newUser = {
           userName,
           password: hashedPassword,
-          normalizedEmail,
+          email: normalizedEmail,
           phone,
           firstName,
           lastName,
