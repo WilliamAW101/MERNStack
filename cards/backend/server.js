@@ -2,6 +2,8 @@ require('dotenv').config(); // for enviroment variables
 const express = require('express');
 const cors = require('cors');
 const { MongoClient } = require('mongodb');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const app = express();
 const client = new MongoClient(process.env.DB_URL);
 
@@ -36,40 +38,47 @@ app.use((req, res, next) => {
 });
 
 app.post('/api/login', async (req, res) => {
-    // THIS WILL CHANGE GOSH IT IS HORRIBLE
-    // I am keeping this example for later
-    // I will also look into JWT using express.js
+    // Payload receiving: userName, password
+    // Payload sending: id, firstName, lastName, token, error
+    try {
+        const { userName, password } = req.body;
+        const db = client.db(process.env.DATABASE);
+        const collection = db.collection('user');
 
-    // Payload receiving: login, password
-    // Payload sending: id, firstName, lastName, error
-    let error = '';
-    const { login, password } = req.body;
-    const db = client.db(process.env.DATABASE);
-    const results = await db
-        .collection('users')
-        .find({ Login: login, Password: password })
-        .toArray();
+        // Find user by userName
+        const user = await collection.findOne({ userName });
 
-    let id = -1;
-    let fn = '';
-    let ln = '';
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid username or password' });
+        }
 
-    if (results.length > 0) {
-        id = results[0].UserID;
-        fn = results[0].FirstName;
-        ln = results[0].LastName;
+        // Compare the provided password with the hashed password
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+
+        if (!isPasswordValid) {
+            return res.status(401).json({ error: 'Invalid username or password' });
+        }
+
+        // Generate JWT token
+        const token = jwt.sign(
+            { id: user._id, userName: user.userName },
+            process.env.JWT_SECRET,
+            { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+        );
+
+        const ret = {
+            id: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            token,
+            error: ''
+        };
+
+        res.status(200).json(ret);
+    } catch (e) {
+        console.error('Login error:', e);
+        res.status(500).json({ error: 'Internal server error' });
     }
-
-    if (login.toLowerCase() === 'rickl' && password === 'COP4331') {
-        id = 1;
-        fn = 'Rick';
-        ln = 'Leinecker';
-    } else if (id === -1) {
-        error = 'Invalid user name/password';
-    }
-
-    const ret = { id, firstName: fn, lastName: ln, error };
-    res.status(200).json(ret);
 });
 
 app.post('/api/signup', async (req, res) => {
@@ -83,12 +92,12 @@ app.post('/api/signup', async (req, res) => {
         // database info
         const db = client.db(process.env.DATABASE);
         const collection = db.collection('user'); // I really dont think we need to hide collection name
-        
+
         if (collection == null) {
           error = 'Database connection error';
           return res.status(500).json({ error });
         }
-        
+
         const existingUser = await collection.findOne({
           $or: [{ userName }, { email }] // see if either the username or email exists already
         });
@@ -96,9 +105,13 @@ app.post('/api/signup', async (req, res) => {
           return res.status(400).json({ error: 'User already exists with that username or email' });
         }
 
+        // Hash the password before storing it
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+
         const newUser = {
           userName,
-          password,
+          password: hashedPassword, // Store hashed password instead of plain text
           email,
           phone,
           firstName,
@@ -118,7 +131,7 @@ app.post('/api/signup', async (req, res) => {
 
         res.status(201).json(ret);
     } catch (e) {
-        console.error('Signup error:', error);
+        console.error('Signup error:', e);
         res.status(500).json({ error: 'Internal server error' });
     }
 
