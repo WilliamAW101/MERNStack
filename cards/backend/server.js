@@ -98,14 +98,33 @@ app.post('/api/signup', async (req, res) => {
         // Payload receiving: login, password
         // Payload sending: id, firstName, lastName, error
         // I will change if need be for frontend
-        const { 
-            userName, 
-            password, 
-            email, 
-            phone, 
-            firstName, 
+        const {
+            userName,
+            password,
+            email,
+            phone,
+            firstName,
             lastName
         } = req.body;
+
+        const requiredFields = {
+            userName,
+            password,
+            email,
+            phone,
+            firstName,
+            lastName
+        };
+
+        const missingFields = Object.entries(requiredFields)
+            .filter(([, value]) => value === undefined || value === null || value === '')
+            .map(([key]) => key);
+
+        if (missingFields.length > 0) {
+            return res.status(400).json({
+                error: `Missing required field${missingFields.length > 1 ? 's' : ''}: ${missingFields.join(', ')}`
+            });
+        }
 
         // database info
         const db = client.db(process.env.DATABASE);
