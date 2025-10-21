@@ -7,6 +7,12 @@ const jwt = require('jsonwebtoken');
 const app = express();
 const client = new MongoClient(process.env.DB_URL);
 
+//import functions
+const {
+    hashPass,
+    verifyPass
+} = require('./utils/authentication.js');
+
 // Connect to MongoDB
 client.connect();
 
@@ -87,11 +93,19 @@ app.post('/api/signup', async (req, res) => {
         // Payload receiving: login, password
         // Payload sending: id, firstName, lastName, error
         // I will change if need be for frontend
-        const { userName, password, email, phone, firstName, lastName} = req.body;
+        const { 
+            userName, 
+            password, 
+            email, 
+            phone, 
+            firstName, 
+            lastName
+        } = req.body;
 
         // database info
         const db = client.db(process.env.DATABASE);
         const collection = db.collection('user'); // I really dont think we need to hide collection name
+        console.log(hashPass, verifyPass);
 
         if (collection == null) {
           error = 'Database connection error';
@@ -105,13 +119,11 @@ app.post('/api/signup', async (req, res) => {
           return res.status(400).json({ error: 'User already exists with that username or email' });
         }
 
-        // Hash the password before storing it
-        const saltRounds = 10;
-        const hashedPassword = await bcrypt.hash(password, saltRounds);
+        const hashedPassword = await hashPass(password); // hashing password
 
         const newUser = {
           userName,
-          password: hashedPassword, // Store hashed password instead of plain text
+          password: hashedPassword,
           email,
           phone,
           firstName,
