@@ -2,14 +2,15 @@ require('dotenv').config(); // for enviroment variables
 const express = require('express');
 const cors = require('cors');
 const { MongoClient } = require('mongodb');
-const jwt = require('jsonwebtoken');
 const app = express();
 const client = new MongoClient(process.env.DB_URL);
+const validator = require('validator');
 
 //import functions
 const {
     hashPass,
-    verifyPass
+    verifyPass,
+    generateToken
 } = require('./utils/authentication.js');
 
 // Connect to MongoDB
@@ -71,11 +72,7 @@ app.post('/api/login', async (req, res) => {
         }
 
         // Generate JWT token
-        const token = jwt.sign(
-            { id: user._id, userName: user.userName },
-            process.env.JWT_SECRET,
-            { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
-        );
+        const token = generateToken(user);
 
         const ret = {
             id: user._id,
@@ -126,6 +123,10 @@ app.post('/api/signup', async (req, res) => {
             });
         }
 
+        const normalizedEmail = (email || '').trim().toLowerCase();
+        if (!validator.isEmail(normalizedEmail)) { return res.status(400).json({ error: 'Invalid email format' }); }
+        
+
         // database info
         const db = client.db(process.env.DATABASE);
         const collection = db.collection('user'); // I really dont think we need to hide collection name
@@ -137,7 +138,7 @@ app.post('/api/signup', async (req, res) => {
         }
 
         const existingUser = await collection.findOne({
-          $or: [{ userName }, { email }] // see if either the username or email exists already
+          $or: [{ userName }, { normalizedEmail }] // see if either the username or email exists already
         });
         if (existingUser) {
           return res.status(400).json({ error: 'User already exists with that username or email' });
@@ -148,7 +149,7 @@ app.post('/api/signup', async (req, res) => {
         const newUser = {
           userName,
           password: hashedPassword,
-          email,
+          normalizedEmail,
           phone,
           firstName,
           lastName,
