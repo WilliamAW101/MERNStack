@@ -5,6 +5,12 @@ const { MongoClient } = require('mongodb');
 const app = express();
 const client = new MongoClient(process.env.DB_URL);
 
+//import functions
+const {
+    hashPass,
+    verifyPass
+} = require('./utils/authentication.js');
+
 // Connect to MongoDB
 client.connect();
 
@@ -78,12 +84,20 @@ app.post('/api/signup', async (req, res) => {
         // Payload receiving: login, password
         // Payload sending: id, firstName, lastName, error
         // I will change if need be for frontend
-        const { userName, password, email, phone, firstName, lastName} = req.body;
+        const { 
+            userName, 
+            password, 
+            email, 
+            phone, 
+            firstName, 
+            lastName
+        } = req.body;
 
         // database info
         const db = client.db(process.env.DATABASE);
         const collection = db.collection('user'); // I really dont think we need to hide collection name
-        
+        console.log(hashPass, verifyPass);
+
         if (collection == null) {
           error = 'Database connection error';
           return res.status(500).json({ error });
@@ -96,9 +110,11 @@ app.post('/api/signup', async (req, res) => {
           return res.status(400).json({ error: 'User already exists with that username or email' });
         }
 
+        const hashedPassword = await hashPass(password); // hashing password
+
         const newUser = {
           userName,
-          password,
+          password: hashedPassword,
           email,
           phone,
           firstName,
@@ -118,7 +134,7 @@ app.post('/api/signup', async (req, res) => {
 
         res.status(201).json(ret);
     } catch (e) {
-        console.error('Signup error:', error);
+        console.error('Signup error:', e);
         res.status(500).json({ error: 'Internal server error' });
     }
 
