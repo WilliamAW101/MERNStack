@@ -1,36 +1,16 @@
 require('dotenv').config(); // for enviroment variables
-const express = require('express');
 const cors = require('cors');
-const { MongoClient } = require('mongodb');
+const express = require('express');
 const app = express();
-const client = new MongoClient(process.env.DB_URL);
-const validator = require('validator');
 
-//import functions
-const {
-    hashPass,
-    verifyPass,
-    generateToken
-} = require('./utils/authentication.js');
-
-// Connect to MongoDB
-client.connect();
+const authenticationRoutes = require('./routes/authRoutes.js');
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Simple ping route, good to make sure server is running
-app.get('/api/ping', async (req, res) => {
-    let error = 'NULL';
-    try {
-        const db = client.db(process.env.DATABASE);
-    } catch (e) {
-        error = e.toString();
-    }
-    const ret = { error };
-    res.status(200).json({ message: 'Ping is successfull ' + ret.error });
-});
+// api routes
+app.use('/api', authenticationRoutes);
 
 // CORS headers (redundant with cors() but kept for explicit control)...Kool
 app.use((req, res, next) => {
@@ -41,145 +21,6 @@ app.use((req, res, next) => {
     );
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
     next();
-});
-
-app.post('/api/login', async (req, res) => {
-    // Payload receiving: userName, password
-    // Payload sending: id, firstName, lastName, token, error
-    try {
-        const { userName, password } = req.body;
-
-        // Validate input
-        if (!userName || !password) {
-            return res.status(400).json({ error: 'Username and password are required' });
-        }
-
-        const db = client.db(process.env.DATABASE);
-        const collection = db.collection('user');
-
-        // Find user by userName
-        const user = await collection.findOne({ userName });
-
-        if (!user) {
-            return res.status(401).json({ error: 'Invalid username or password' });
-        }
-
-        // Verify password using the authentication utility
-        const isPasswordValid = await verifyPass(password, user.password);
-
-        if (!isPasswordValid) {
-            return res.status(401).json({ error: 'Invalid username or password' });
-        }
-
-        // Generate JWT token
-        const token = generateToken(user);
-
-        const ret = {
-            id: user._id,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            token,
-            error: ''
-        };
-
-        res.status(200).json(ret);
-    } catch (e) {
-        console.error('Login error:', e);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.post('/api/signup', async (req, res) => {
-    let error = '';
-    try {
-
-        // payload receiving
-        const requiredFields = {
-            userName,
-            password,
-            email,
-            phone,
-            firstName,
-            lastName
-        } = req.body;
-
-
-        // ceck to see if everything is filled out
-        const missingFields = Object.entries(requiredFields)
-            .filter(([, value]) => value === undefined || value === null || value === '')
-            .map(([key]) => key);
-
-        if (missingFields.length > 0) {
-            return res.status(400).json({
-                error: `Missing required field${missingFields.length > 1 ? 's' : ''}: ${missingFields.join(', ')}`
-            });
-        }
-
-        // validate email format
-        const normalizedEmail = (email || '').trim().toLowerCase(); // looks like most providers do not care about case sensitivity, can change if need be
-        if (!validator.isEmail(normalizedEmail)) { return res.status(400).json({ error: 'Invalid email format' }); }
-        
-
-        // database info
-        const db = client.db(process.env.DATABASE);
-        const collection = db.collection('user'); // I really dont think we need to hide collection name
-        if (collection == null) {
-          error = 'Database connection error';
-          return res.status(500).json({ error });
-        }
-
-        const existingUser = await collection.findOne({
-          $or: [{ userName }, { normalizedEmail }] // see if either the username or email exists already
-        });
-        if (existingUser) {
-          return res.status(400).json({ error: 'User already exists with that username or email' });
-        }
-
-        const hashedPassword = await hashPass(password); // hashing password
-
-        const newUser = {
-          userName,
-          password: hashedPassword,
-          email: normalizedEmail,
-          phone,
-          firstName,
-          lastName,
-          createdAt: new Date()
-        };
-
-        // insert new user into the database
-        const result = await collection.insertOne(newUser);
-
-        const ret = {
-          id: result.insertedId,
-          firstName,
-          lastName,
-          error: ''
-        };
-
-        res.status(201).json(ret);
-    } catch (e) {
-        console.error('Signup error:', e);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-
-});
-
-app.post('/api/searchcards', async (req, res) => {
-    // I am keeping this example for later
-    let error = '';
-    const { userId, search } = req.body;
-    const _search = (search || '').trim();
-    const db = client.db('COP4331Cards');
-
-    const results = await db
-        .collection('Cards')
-        .find({ Card: { $regex: _search + '.*', $options: 'i' } })
-        .toArray();
-
-    const _ret = results.map((r) => r.Card);
-    const ret = { results: _ret, error };
-    res.status(200).json(ret);
 });
 
 app.listen(5000, () => {
