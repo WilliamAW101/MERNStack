@@ -11,6 +11,10 @@ const {
     generateToken
 } = require('../utils/authentication.js');
 
+const {
+    responseJSON
+} = require('../utils/json.js')
+
 // Simple ping route, good to make sure server is running
 router.get('/ping', async (req, res) => {
     let error = 'NULL';
@@ -18,9 +22,9 @@ router.get('/ping', async (req, res) => {
         await connectToDatabase();
     } catch (e) {
         error = e.toString();
-        res.status(500).json({ message: 'Ping failed ' + error });
+        responseJSON(res, false, { code: 'Internal server error' }, 'Ping failed ' + error, 500);
     }
-    res.status(200).json({ message: 'Ping is successfull ' + error });
+    responseJSON(res, true, 'Ping is successfull', 'User signed up successfully!', 200);
 });
 
 router.post('/login', async (req, res) => {
@@ -31,7 +35,7 @@ router.post('/login', async (req, res) => {
 
         // Validate input
         if (!userName || !password) {
-            return res.status(400).json({ error: 'Username and password are required' });
+            return responseJSON(res, false, { code: 'Bad Request' }, 'Username and password are required', 400);
         }
 
         const db = await connectToDatabase();
@@ -41,14 +45,14 @@ router.post('/login', async (req, res) => {
         const user = await collection.findOne({ userName });
 
         if (!user) {
-            return res.status(401).json({ error: 'Invalid username or password' });
+            return responseJSON(res, false, { code: 'Unauthorized' }, 'Invalid username or password', 401)
         }
 
         // Verify password using the authentication utility
         const isPasswordValid = await verifyPass(password, user.password);
 
         if (!isPasswordValid) {
-            return res.status(401).json({ error: 'Invalid username or password' });
+            return responseJSON(res, false, { code: 'Unauthorized' }, 'Invalid username or password', 401)
         }
 
         // Generate JWT token
@@ -59,13 +63,12 @@ router.post('/login', async (req, res) => {
             firstName: user.firstName,
             lastName: user.lastName,
             token,
-            error: ''
         };
 
-        res.status(200).json(ret);
+        responseJSON(res, true, ret, 'User logged in successfully!', 200);
     } catch (e) {
         console.error('Login error:', e);
-        res.status(500).json({ error: 'Internal server error' });
+        responseJSON(res, false, { code: 'Internal server error' }, 'Failed to communicate with endpoint', 500);
     }
 });
 
@@ -90,29 +93,28 @@ router.post('/signup', async (req, res) => {
             .map(([key]) => key);
 
         if (missingFields.length > 0) {
-            return res.status(400).json({
-                error: `Missing required field${missingFields.length > 1 ? 's' : ''}: ${missingFields.join(', ')}`
-            });
+            return responseJSON(res, false, { code: 'Bad Request' }, `Missing required field${missingFields.length > 1 ? 's' : ''}: ${missingFields.join(', ')}`, 400);
         }
 
         // validate email format
         const normalizedEmail = (email || '').trim().toLowerCase(); // looks like most providers do not care about case sensitivity, can change if need be
-        if (!validator.isEmail(normalizedEmail)) { return res.status(400).json({ error: 'Invalid email format' }); }
-        
+        if (!validator.isEmail(normalizedEmail)) { 
+            return responseJSON(res, false, { code: 'Bad Request' }, 'Invalid email format', 400);
+        }
 
         // database info
         const db = await connectToDatabase();
         const collection = db.collection('user'); // I really dont think we need to hide collection name
         if (collection == null) {
-          error = 'Database connection error';
-          return res.status(500).json({ error });
+          error = 'Internal Server Error';
+          return responseJSON(res, false, { code: error }, 'Failed to connect to database', 500);
         }
 
         const existingUser = await collection.findOne({
           $or: [{ userName }, { normalizedEmail }] // see if either the username or email exists already
         });
         if (existingUser) {
-          return res.status(400).json({ error: 'User already exists with that username or email' });
+          return responseJSON(res, false, { code: 'Bad Request' }, 'User already exists with that username or email', 400);
         }
 
         const hashedPassword = await hashPass(password); // hashing password
@@ -124,7 +126,9 @@ router.post('/signup', async (req, res) => {
           phone,
           firstName,
           lastName,
-          createdAt: new Date()
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          verified: false
         };
 
         // insert new user into the database
@@ -134,13 +138,11 @@ router.post('/signup', async (req, res) => {
           id: result.insertedId,
           firstName,
           lastName,
-          error: ''
         };
-
-        res.status(201).json(ret);
+        responseJSON(res, true, ret, 'User signed up successfully!', 201);
     } catch (e) {
         console.error('Signup error:', e);
-        res.status(500).json({ error: 'Internal server error' });
+        responseJSON(res, false, { code: 'Internal server error' }, 'Failed to communicate with endpoint', 500);
     }
 
 });
