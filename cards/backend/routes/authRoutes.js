@@ -8,7 +8,11 @@ const connectToDatabase = require('../config/database.js')
 const {
     hashPass,
     verifyPass,
-    generateToken
+    generateToken,
+    createTransporter,
+    genEmailToken,
+    sendVerificationEmail,
+    checkExpired
 } = require('../utils/authentication.js');
 
 const {
@@ -24,7 +28,7 @@ router.get('/ping', async (req, res) => {
         error = e.toString();
         responseJSON(res, false, { code: 'Internal server error' }, 'Ping failed ' + error, 500);
     }
-    responseJSON(res, true, 'Ping is successfull', 'User signed up successfully!', 200);
+    responseJSON(res, true, 'Ping is successfull', 'Server Connection Successfull!', 200);
 });
 
 router.post('/login', async (req, res) => {
@@ -53,6 +57,10 @@ router.post('/login', async (req, res) => {
 
         if (!isPasswordValid) {
             return responseJSON(res, false, { code: 'Unauthorized' }, 'Invalid username or password', 401)
+        }
+
+        if (!user.verified) {
+            return responseJSON(res, false, { code: 'Unauthorized' }, 'Email is not validated', 401);
         }
 
         // Generate JWT token
@@ -131,6 +139,14 @@ router.post('/signup', async (req, res) => {
           verified: false
         };
 
+        // Email verification
+        const transporter = createTransporter();
+        const token = genEmailToken(normalizedEmail);
+        const success = await sendVerificationEmail(normalizedEmail, token, transporter);
+        if (!success) {
+            responseJSON(res, false, { code: 'Email address does not exist' }, 'Failed to send verification email', 553);
+        }
+
         // insert new user into the database
         const result = await collection.insertOne(newUser);
 
@@ -145,6 +161,38 @@ router.post('/signup', async (req, res) => {
         responseJSON(res, false, { code: 'Internal server error' }, 'Failed to communicate with endpoint', 500);
     }
 
+});
+
+// Front end does not need to know this crap exists, just that it works
+router.get('/verifyEmail', async (req, res) => {
+    try {
+        
+        const db = await connectToDatabase();
+        const collection = db.collection('user');
+
+        const token = req.query.token;
+        if (!token)
+            return responseJSON(res, false, { code: 'Missing Token' }, 'Token was not provided', 400);
+
+        const decodedToken = checkExpired(token);
+        if (decodedToken == null) {
+            return responseJSON(res, false, { code: 'Expired Token' }, 'Took too long to verify', 498);
+        }
+
+        const result = await collection.updateOne(
+            { email: decodedToken.email},
+            { $set: { verified: true}}
+        );
+
+        if (result.modifiedCount == 0) {
+            return responseJSON(res, false, { code: 'Invalid User' }, 'User not found or already verified', 400);
+        }
+        
+        responseJSON(res, true, 'Verification Successfull!', 'User has been successfully verified!', 200);
+    } catch (e) {
+        error = e.toString();
+        responseJSON(res, false, { code: 'Internal server error' }, 'Couldnt Communicate with endpoint', 500);
+    }
 });
 
 module.exports = router;

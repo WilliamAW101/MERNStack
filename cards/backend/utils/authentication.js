@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const validator = require('validator');
+const nodemailer = require('nodemailer');
 
 const hashPass = async (password) => { // its in the name
     const salt = 10;
@@ -21,10 +22,9 @@ const generateToken = (user) => { // creates token, I don't think I need to add 
 
 const checkExpired = (token) => { // validating the token
     try {
-        jwt.verify(token, process.env.JWT_SECRET);
-        return false;
+        return jwt.verify(token, process.env.JWT_SECRET);
     } catch (e) {
-        return true;
+        return null;
     }
 }
 
@@ -33,9 +33,53 @@ const refreshToken = (token) => { // refreshing token expiration
     return generateToken(decode);
 }
 
-const extractTokenInfo = (token) => { // maybe this is redundant but I want to make it :p 
-    const decode = jwt.decode(token);
-    return decode;
+const createTransporter = () => {
+    return nodemailer.createTransport({
+            service: 'gmail',
+            port: 587,
+            secure: false, // true for 465, false for other ports
+            auth: {
+              user: process.env.EMAIL_USER,
+              pass: process.env.EMAIL_PASS,
+            },
+        })
 }
 
-module.exports = { hashPass, verifyPass, generateToken, checkExpired, extractTokenInfo };
+const sendVerificationEmail = async (to, token, transporter) => {
+  const verifyLink = `http://localhost:5000/api/verifyEmail?token=${token}`; // will need to change later
+
+  const mailOptions = {
+    from: `"CraigTag" <${process.env.EMAIL_USER}>`,
+    to,
+    subject: 'Verify your email address',
+    html: `
+      <h2>Welcome!</h2>
+      <p>Thanks for signing up. Please verify your email address by clicking the link below:</p>
+      <a href="${verifyLink}" 
+         style="display:inline-block;padding:10px 15px;background:#4CAF50;color:white;text-decoration:none;border-radius:5px;">
+         Verify Email
+      </a>
+      <p>This link will expire in 24 hours.</p>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`Verification email sent to ${to}`);
+    console.log(verifyLink); // temporary for now
+    return true;
+  } catch (err) {
+    console.error('Error sending email:', err);
+    return false;
+  }
+}
+
+const genEmailToken = (email) => {
+    return jwt.sign(
+        { email },
+        process.env.JWT_SECRET,
+        { expiresIn: '1d' }
+    );
+}
+
+module.exports = { hashPass, verifyPass, generateToken, checkExpired, createTransporter, sendVerificationEmail, genEmailToken };
