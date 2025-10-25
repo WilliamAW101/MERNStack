@@ -1,36 +1,16 @@
 require('dotenv').config(); // for enviroment variables
-const express = require('express');
 const cors = require('cors');
-const { MongoClient } = require('mongodb');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const express = require('express');
 const app = express();
-const client = new MongoClient(process.env.DB_URL);
 
-//import functions
-const {
-    hashPass,
-    verifyPass
-} = require('./utils/authentication.js');
-
-// Connect to MongoDB
-client.connect();
+const authenticationRoutes = require('./routes/authRoutes.js');
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Simple ping route, good to make sure server is running
-app.get('/api/ping', async (req, res) => {
-    let error = 'NULL';
-    try {
-        const db = client.db(process.env.DATABASE);
-    } catch (e) {
-        error = e.toString();
-    }
-    const ret = { error };
-    res.status(200).json({ message: 'Ping is successfull ' + ret.error });
-});
+// api routes
+app.use('/api', authenticationRoutes);
 
 // CORS headers (redundant with cors() but kept for explicit control)...Kool
 app.use((req, res, next) => {
