@@ -6,9 +6,15 @@
   "type": "commonjs",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon ./server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "cross-env NODE_ENV=test jest --runInBand",
+    "test:watch": "cross-env NODE_ENV=test jest --watch",
+    "test:coverage": "cross-env NODE_ENV=test jest --coverage --runInBand"
+  },
+  "dependencies": {
+    "@sendgrid/mail": "^8.1.6",
+
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.6",
