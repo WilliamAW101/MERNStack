@@ -1,7 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const validator = require('validator');
-const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
 
 const hashPass = async (password) => { // its in the name
     const salt = 10;
@@ -33,19 +32,8 @@ const refreshToken = (token) => { // refreshing token expiration
     return generateToken(decode);
 }
 
-const createTransporter = () => {
-    return nodemailer.createTransport({
-            service: 'gmail',
-            port: 587,
-            secure: false, // true for 465, false for other ports
-            auth: {
-              user: process.env.EMAIL_USER,
-              pass: process.env.EMAIL_PASS,
-            },
-        })
-}
-
-const sendVerificationEmail = async (to, token, transporter) => {
+const sendVerificationEmail = async (to, token) => {
+  sgMail.setApiKey(process.env.SENDGRIND_API_KEY);
   const verifyLink = `http://localhost:5000/api/verifyEmail?token=${token}`; // will need to change later
 
   const mailOptions = {
@@ -64,9 +52,8 @@ const sendVerificationEmail = async (to, token, transporter) => {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    await sgMail.send(mailOptions);
     console.log(`Verification email sent to ${to}`);
-    console.log(verifyLink); // temporary for now
     return true;
   } catch (err) {
     console.error('Error sending email:', err);
@@ -82,4 +69,4 @@ const genEmailToken = (email) => {
     );
 }
 
-module.exports = { hashPass, verifyPass, generateToken, checkExpired, createTransporter, sendVerificationEmail, genEmailToken };
+module.exports = { hashPass, verifyPass, generateToken, checkExpired, sendVerificationEmail, genEmailToken };

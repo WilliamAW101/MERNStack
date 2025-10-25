@@ -9,7 +9,6 @@ const {
     hashPass,
     verifyPass,
     generateToken,
-    createTransporter,
     genEmailToken,
     sendVerificationEmail,
     checkExpired
@@ -136,15 +135,14 @@ router.post('/signup', async (req, res) => {
           lastName,
           createdAt: new Date(),
           updatedAt: new Date(),
-          verified: false
+          verified: false // untill I can get this dang email verification working
         };
 
-        // Email verification
-        const transporter = createTransporter();
+        // // Email verification
         const token = genEmailToken(normalizedEmail);
-        const success = await sendVerificationEmail(normalizedEmail, token, transporter);
+        const success = await sendVerificationEmail(normalizedEmail, token);
         if (!success) {
-            responseJSON(res, false, { code: 'Email address does not exist' }, 'Failed to send verification email', 553);
+            return responseJSON(res, false, { code: 'Email address does not exist' }, 'Failed to send verification email', 553);
         }
 
         // insert new user into the database
