@@ -2,8 +2,10 @@
 name: CI
 
 on:
-  push: { branches: [main] }
-  pull_request: { branches: [main] }
+  push:
+    branches: [ Alyssa ]   # change to [main, Alyssa] or to all branches later
+  pull_request:
+    branches: [ Alyssa ]
   workflow_dispatch:
 
 concurrency:
@@ -16,18 +18,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Show repo tree (debug)
+        run: |
+          pwd
+          ls -la
+          echo "----"
+          ls -la MERNSTACK
+          echo "----"
+          ls -la MERNSTACK/cards
+          echo "----"
+          ls -la MERNSTACK/cards/backend
+
       - name: Use Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache-dependency-path: cards/backend/package-lock.json
+          cache-dependency-path: MERNSTACK/cards/backend/package-lock.json
 
       - name: Install (backend)
-        working-directory: cards/backend
+        working-directory: MERNSTACK/cards/backend
         run: npm ci
 
       - name: Run tests (backend)
-        working-directory: cards/backend
+        working-directory: MERNSTACK/cards/backend
         env:
           NODE_ENV: test
           JWT_SECRET: test-secret
@@ -40,5 +53,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: backend-coverage
-          path: cards/backend/coverage
+          path: MERNSTACK/cards/backend/coverage
           if-no-files-found: ignore
