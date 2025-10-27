@@ -3,7 +3,9 @@ name: CI
 
 on:
   push:
+    branches: [Alyssa]
   pull_request:
+    branches: [Alyssa]
   workflow_dispatch:
 
 concurrency:
@@ -14,11 +16,12 @@ jobs:
   test-backend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.ref_name }}
 
-      - name: Debug: show branch and tree
+      - name: Debug - show branch and tree
         run: |
           echo "Branch: $GITHUB_REF_NAME  SHA: $GITHUB_SHA"
           pwd
@@ -28,7 +31,8 @@ jobs:
           echo "---- cards/backend ----"
           ls -la cards/backend || true
 
-      - uses: actions/setup-node@v4
+      - name: Use Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache-dependency-path: cards/backend/package-lock.json
