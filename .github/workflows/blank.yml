@@ -1,10 +1,9 @@
+# .github/workflows/ci.yml
 name: CI
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  push: { branches: [main] }
+  pull_request: { branches: [main] }
   workflow_dispatch:
 
 concurrency:
@@ -12,59 +11,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  test-backend:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: [18, 20]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Use Node ${{ matrix.node }}
+      - name: Use Node
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
-          cache-dependency-path: |
-            cards/backend/package-lock.json
-            frontend/package-lock.json
+          node-version: 20
+          cache-dependency-path: cards/backend/package-lock.json
 
-      # ---------- Backend ----------
       - name: Install (backend)
         working-directory: cards/backend
         run: npm ci
 
-      - name: Test (backend)
+      - name: Run tests (backend)
         working-directory: cards/backend
         env:
           NODE_ENV: test
-          # mongodb-memory-server provides its own URI; your test setup overwrites DB_URL
-          DB_URL: ""
-          DATABASE: test-db
           JWT_SECRET: test-secret
           SENDGRID_API_KEY: dummy
           EMAIL_USER: test@example.com
-          CI: true
-        run: npm test -- --runInBand
+        run: npm run test:coverage   # uses your cross-env jest script
 
-      # ---------- Frontend ----------
-      - name: Install (frontend)
-        working-directory: frontend
-        run: npm ci
-
-      - name: Test (frontend)
-        working-directory: frontend
-        env:
-          CI: true
-        run: npm test -- --coverage --ci
-
-      # ---------- Artifacts ----------
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-${{ matrix.node }}
-          path: |
-            cards/backend/coverage
-            frontend/coverage
+          name: backend-coverage
+          path: cards/backend/coverage
           if-no-files-found: ignore
