@@ -7,7 +7,7 @@ const connectToDatabase = require('../config/database');
 const closeDatabase = connectToDatabase.closeDatabase;
 const { hashPass } = require('../utils/authentication');
 
-const getSignedUrlMock = jest.fn().mockResolvedValue('https://example.com/signed');
+const mockGetSignedUrl = jest.fn().mockResolvedValue('https://example.com/signed');
 
 jest.mock('@aws-sdk/client-s3', () => {
     const S3Client = jest.fn().mockImplementation(() => ({}));
@@ -17,7 +17,7 @@ jest.mock('@aws-sdk/client-s3', () => {
 });
 
 jest.mock('@aws-sdk/s3-request-presigner', () => ({
-    getSignedUrl: (...args) => getSignedUrlMock(...args)
+    getSignedUrl: (...args) => mockGetSignedUrl(...args)
 }));
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
@@ -50,8 +50,8 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-    getSignedUrlMock.mockReset();
-    getSignedUrlMock.mockResolvedValue('https://example.com/signed');
+    mockGetSignedUrl.mockReset();
+    mockGetSignedUrl.mockResolvedValue('https://example.com/signed');
 
     const db = await connectToDatabase();
     await Promise.all([
@@ -166,7 +166,7 @@ describe('POST /api/uploads/url', () => {
         expect(res.status).toBe(200);
         expect(res.body.uploadUrl).toBe('https://example.com/signed');
         expect(res.body.key).toMatch(new RegExp(`^posts/${userId}/[\\w-]+\\.jpg$`));
-        expect(getSignedUrlMock).toHaveBeenCalledTimes(1);
+        expect(mockGetSignedUrl).toHaveBeenCalledTimes(1);
     });
 
     it('rejects requests without a bearer token', async () => {
@@ -175,13 +175,13 @@ describe('POST /api/uploads/url', () => {
             .send({ contentType: 'image/jpeg', ext: 'jpg' });
 
         expect(res.status).toBe(401);
-        expect(res.body.error).toMatch(/authorization token missing/i);
+        expect(res.body.error).toMatch(/access token required/i);
     });
 });
 
 describe('POST /api/downloads/url', () => {
     it('returns a presigned download url for an existing object key', async () => {
-        getSignedUrlMock.mockResolvedValueOnce('https://example.com/download');
+        mockGetSignedUrl.mockResolvedValueOnce('https://example.com/download');
         const { token } = await createVerifiedUserWithToken({ userName: 'downloader' });
 
         const res = await request(app)
@@ -191,7 +191,7 @@ describe('POST /api/downloads/url', () => {
 
         expect(res.status).toBe(200);
         expect(res.body.url).toBe('https://example.com/download');
-        expect(getSignedUrlMock).toHaveBeenCalledTimes(1);
+        expect(mockGetSignedUrl).toHaveBeenCalledTimes(1);
     });
 });
 
@@ -248,6 +248,6 @@ describe('POST /api/addPost', () => {
             .send({ caption: 'Missing token', difficulty: 1, rating: 1 });
 
         expect(res.status).toBe(401);
-        expect(res.body.error).toMatch(/authorization token missing/i);
+        expect(res.body.error).toMatch(/access token required/i);
     });
 });
