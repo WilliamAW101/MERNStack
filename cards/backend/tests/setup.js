@@ -14,4 +14,4 @@ afterEach(() => {
   jest.clearAllMocks();
 });
 
-setTimeout(10000); // Increase timeout for async operations if needed
+jest.setTimeout(10000); // Increase timeout for async operations if needed
