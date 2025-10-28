@@ -1,14 +1,15 @@
-require('dotenv').config(); // for enviroment variables
-const cors = require('cors');
-const express = require('express');
-const app = express();
+const app = require('./app');
 
 const authenticationRoutes = require('./routes/authRoutes.js');
 const postRoutes = require('./routes/postRoutes.js');
+const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// Only start the HTTP listener when this file is executed directly.
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Server listening on port ${PORT}`);
+    });
+}
 
 // api routes
 app.use('/api', authenticationRoutes);
@@ -29,3 +30,4 @@ app.listen(5000, () => {
     // start Node + Express server on port 5000
     console.log('Server listening on port 5000');
 });
+module.exports = app;
