@@ -15,11 +15,10 @@ const s3 = new S3Client({ region: process.env.AWS_REGION });
 router.post('/uploads/url', authenticateToken, async (req, res) => {
   try {
     const { contentType, ext } = req.body;
-    const allow = ['image/jpeg','image/png','image/webp','video/mp4'];
+    const allow = ['image/jpeg','image/png','image/webp','video/mp4', 'video/mov', 'image/heic'];
     if (!allow.includes(contentType)) return res.status(400).json({ error: 'Invalid contentType' });
 
-    // If you enable auth, use req.user.id instead of 'anon'
-    const userId = req.user?.id || 'anon';
+    const userId = req.user.id ;
     const key = `posts/${userId}/${crypto.randomUUID()}.${(ext || 'bin').toLowerCase()}`;
 
     const cmd = new PutObjectCommand({
@@ -36,6 +35,8 @@ router.post('/uploads/url', authenticateToken, async (req, res) => {
 });
 
 /**
+ * the frontend call your existing POST /api/downloads/url with { key } to get a short-lived signed URL.
+ * frontend to call /api/downloads/url when rendering each image and display the returned link.
  * Short-lived signed GET for a single key (60s).
  * Body: { key }
  */
