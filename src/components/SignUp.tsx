@@ -221,7 +221,7 @@ export default function SignUp() {
               <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
                 <CheckCircleOutlineIcon sx={{ fontSize: 60, color: 'success.main' }} />
               </Box>
-              <Typography variant="h5" fontWeight={600}>
+              <Typography variant="h5" component="div" fontWeight={600}>
                 Verify Your Email
               </Typography>
             </DialogTitle>

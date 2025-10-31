@@ -6,7 +6,7 @@ export default function SignupPage() {
 
   return (
     <Box>
-        <SignUp/>
+      <SignUp />
     </Box>
   )
 }
