@@ -17,9 +17,6 @@ import AppTheme from '../theme/AppTheme';
 import { useUser } from '@/context/user/UserContext';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/context/toast';
-import ForgotPassword from './ForgotPassword';
-import VerifyCode from './VerifyCode';
-import ResetPassword from './ResetPassword';
 
 
 const Card = styled(MuiCard)(({ theme }) => ({
@@ -49,6 +46,7 @@ const SignInContainer = styled(Stack)(({ theme }) => ({
   height: 'calc((1 - var(--template-frame-height, 0)) * 100dvh)',
   minHeight: '100vh',
   padding: theme.spacing(1),
+  background: 'linear-gradient(135deg, #FBEED7 0%, #E8D4B8 50%, #C9AE8E 100%)',
   [theme.breakpoints.up('sm')]: {
     padding: theme.spacing(2),
   },
@@ -58,10 +56,12 @@ const SignInContainer = styled(Stack)(({ theme }) => ({
   [theme.breakpoints.up('lg')]: {
     padding: theme.spacing(6),
   },
-
+  ...theme.applyStyles('dark', {
+    background: 'linear-gradient(135deg, #FBEED7 0%, #E8D4B8 50%, #C9AE8E 100%)',
+  }),
 }));
 
-export default function SignIn(props: { disableCustomTheme?: boolean; onClose?: () => void; onOpenSignUp?: () => void; onOpenSignIn?: () => void }) {
+export default function SignIn() {
   const [usernameError, setUsernameError] = React.useState(false);
   const [usernameErrorMessage, setUsernameErrorMessage] = React.useState('');
   const [passwordError, setPasswordError] = React.useState(false);
@@ -70,40 +70,7 @@ export default function SignIn(props: { disableCustomTheme?: boolean; onClose?: 
   const toast = useToast();
   const { setUser } = useUser();
 
-  const [isOpenForgotPassword, setIsOpenForgotPassword] = React.useState(false);
-  const [isOpenVerifyCode, setIsOpenVerifyCode] = React.useState(false);
-  const [isOpenResetPassword, setIsOpenResetPassword] = React.useState(false);
-  const [resetEmail, setResetEmail] = React.useState('');
 
-  const handleOpenForgotPassword = () => {
-    setIsOpenForgotPassword(true);
-  };
-
-  const handleCloseForgotPassword = () => {
-    setIsOpenForgotPassword(false);
-  };
-
-  const handleCodeSent = (email: string) => {
-    setResetEmail(email);
-    setIsOpenVerifyCode(true);
-  };
-
-  const handleCloseVerifyCode = () => {
-    setIsOpenVerifyCode(false);
-  };
-
-  const handleCodeVerified = () => {
-    setIsOpenResetPassword(true);
-  };
-
-  const handleCloseResetPassword = () => {
-    setIsOpenResetPassword(false);
-  };
-
-  const handlePasswordReset = () => {
-    // Open SignIn modal after password reset
-    if (props.onOpenSignIn) props.onOpenSignIn();
-  };
   const baseUrl = process.env.REMOTE_URL;
 
 
@@ -142,7 +109,6 @@ export default function SignIn(props: { disableCustomTheme?: boolean; onClose?: 
 
         setUser(userData);
         toast.success("Login successful");
-        if (props.onClose) props.onClose();
         router.push("/");
       } else {
         // Check if it's an email verification error
@@ -188,114 +154,85 @@ export default function SignIn(props: { disableCustomTheme?: boolean; onClose?: 
   };
 
   return (
-    <AppTheme {...props}>
+    <AppTheme>
       <CssBaseline enableColorScheme />
-      <Box sx={{ p: { xs: 2, sm: 3 } }}>
-        <Typography
-          component="h1"
-          variant="h4"
-          sx={{
-            width: '100%',
-            fontSize: { xs: '1.25rem', sm: '1.75rem' },
-            textAlign: 'center',
-            mb: 2
-          }}
-        >
-          Sign in
-        </Typography>
-        <Box
-          component="form"
-          noValidate
-          onSubmit={handleSubmit}
-          sx={{ display: 'flex', flexDirection: 'column', width: '100%', gap: 1.5 }}
-        >
-          <FormControl>
-            <FormLabel htmlFor="username">Username</FormLabel>
-            <TextField
-              error={usernameError}
-              helperText={usernameErrorMessage}
-              id="username"
-              type="text"
-              name="username"
-              placeholder="Your username"
-              autoComplete="username"
-              autoFocus
-              required
-              fullWidth
-              variant="outlined"
-              color={usernameError ? 'error' : 'primary'}
-              size="small"
-            />
-          </FormControl>
-          <FormControl>
-            <FormLabel htmlFor="password">Password</FormLabel>
-            <TextField
-              error={passwordError}
-              helperText={passwordErrorMessage}
-              name="password"
-              placeholder="••••••"
-              type="password"
-              id="password"
-              autoComplete="current-password"
-              required
-              fullWidth
-              variant="outlined"
-              color={passwordError ? 'error' : 'primary'}
-              size="small"
-            />
-          </FormControl>
-
-          <ForgotPassword
-            open={isOpenForgotPassword}
-            handleClose={handleCloseForgotPassword}
-            onCodeSent={handleCodeSent}
-          />
-          <VerifyCode
-            open={isOpenVerifyCode}
-            handleClose={handleCloseVerifyCode}
-            email={resetEmail}
-            onCodeVerified={handleCodeVerified}
-          />
-          <ResetPassword
-            open={isOpenResetPassword}
-            handleClose={handleCloseResetPassword}
-            email={resetEmail}
-            onPasswordReset={handlePasswordReset}
-          />
-          <Button type="submit" fullWidth variant="contained" onClick={validateInputs} sx={{ mt: 1 }}>
-            Sign in
-          </Button>
-          <Link
-            component="button"
-            type="button"
-            onClick={handleOpenForgotPassword}
-            variant="body2"
-            sx={{ alignSelf: 'center', fontSize: '0.875rem' }}
+      <SignInContainer direction="column" justifyContent="space-between">
+        {/* <ColorModeSelect sx={{ position: 'fixed', top: '1rem', right: '1rem' }} /> */}
+        <Card variant="outlined">
+          <Typography
+            component="h1"
+            variant="h4"
+            sx={{
+              width: '100%',
+              fontSize: { xs: '1.5rem', sm: '2rem', md: '2.15rem' },
+              textAlign: 'center'
+            }}
           >
-            Forgot your password?
-          </Link>
-        </Box>
-        <Divider sx={{ my: 2 }}>or</Divider>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
-          <Typography sx={{ textAlign: 'center', fontSize: '0.9rem' }}>
-            Don&apos;t have an account?{' '}
+            Sign in
+          </Typography>
+          <Box
+            component="form"
+            noValidate
+            onSubmit={handleSubmit}
+            sx={{ display: 'flex', flexDirection: 'column', width: '100%', gap: 2 }}
+          >
+            <FormControl>
+              <FormLabel htmlFor="username">Username</FormLabel>
+              <TextField
+                error={usernameError}
+                helperText={usernameErrorMessage}
+                id="username"
+                type="text"
+                name="username"
+                placeholder="Your username"
+                autoComplete="username"
+                autoFocus
+                required
+                fullWidth
+                variant="outlined"
+                color={usernameError ? 'error' : 'primary'}
+              />
+            </FormControl>
+            <FormControl sx={{ marginBottom: 2 }}>
+              <FormLabel htmlFor="password">Password</FormLabel>
+              <TextField
+                error={passwordError}
+                helperText={passwordErrorMessage}
+                name="password"
+                placeholder="••••••"
+                type="password"
+                id="password"
+                autoComplete="current-password"
+                required
+                fullWidth
+                variant="outlined"
+                color={passwordError ? 'error' : 'primary'}
+              />
+            </FormControl>
+            <Button type="submit" fullWidth variant="contained" onClick={validateInputs}>
+              Sign in
+            </Button>
             <Link
               component="button"
               type="button"
+              onClick={() => router.push('/forgot-password')}
               variant="body2"
-              sx={{ alignSelf: 'center' }}
-              onClick={() => {
-                if (props.onClose) props.onClose();
-                setTimeout(() => {
-                  if (props.onOpenSignUp) props.onOpenSignUp();
-                }, 300);
-              }}
+              sx={{ alignSelf: 'center', cursor: 'pointer' }}
             >
-              Sign up
+              Forgot your password?
             </Link>
-          </Typography>
-        </Box>
-      </Box>
+          </Box>
+          <Divider>or</Divider>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography sx={{ textAlign: 'center' }}>
+              Don&apos;t have an account?{' '}
+              <Link href="/signup" variant="body2" sx={{ alignSelf: 'center' }}>
+                Sign up
+              </Link>
+            </Typography>
+          </Box>
+        </Card>
+      </SignInContainer>
     </AppTheme>
   );
 }

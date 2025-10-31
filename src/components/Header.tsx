@@ -8,7 +8,6 @@ import Toolbar from '@mui/material/Toolbar';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import { MountainIcon } from '../asset/icons/CustomIcons';
-import backgroundImage from '../asset/yang-song-gsh-RsCnLKQ-unsplash.jpg';
 import { useUser } from '@/context/user/UserContext';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import Menu from '@mui/material/Menu';
@@ -16,10 +15,8 @@ import MenuItem from '@mui/material/MenuItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonIcon from '@mui/icons-material/Person';
-import { Typography, Dialog, Divider } from '@mui/material';
+import { Typography, Divider } from '@mui/material';
 import { useRouter } from 'next/navigation';
-import SignIn from './SignIn';
-import SignUp from './SignUp';
 
 const StyledToolbar = styled(Toolbar)(({ theme }) => ({
   display: 'flex',
@@ -36,23 +33,13 @@ export default function Header() {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [isAuthenticated, setIsAuthenticated] = React.useState(false);
 
-  const [isOpenSignIn, setIsOpenSignIn] = React.useState(false);
-  const [isOpenSignUp, setIsOpenSignUp] = React.useState(false);
 
   const handleOpenSignIn = () => {
-    setIsOpenSignIn(true);
+    router.push('/login');
   };
 
   const handleOpenSignUp = () => {
-    setIsOpenSignUp(true);
-  };
-
-  const handleCloseSignIn = () => {
-    setIsOpenSignIn(false);
-  };
-
-  const handleCloseSignUp = () => {
-    setIsOpenSignUp(false);
+    router.push('/signup');
   };
 
   React.useEffect(() => {
@@ -81,13 +68,9 @@ export default function Header() {
         sx={{
           mt: 'calc(var(--template-frame-height, 0px))',
           width: '100%',
-          backgroundImage: `url(${backgroundImage.src})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          backgroundAttachment: 'fixed',
           boxShadow: 0,
           bgcolor: 'transparent',
+          background: 'transparent',
         }}
       >
         <StyledToolbar variant="dense" disableGutters sx={{ px: { xs: 1, sm: 2 } }}>
@@ -258,23 +241,6 @@ export default function Header() {
         </StyledToolbar>
       </AppBar>
 
-      <Dialog
-        open={isOpenSignIn}
-        onClose={handleCloseSignIn}
-        maxWidth="xs"
-        fullWidth
-      >
-        <SignIn onClose={handleCloseSignIn} onOpenSignUp={handleOpenSignUp} onOpenSignIn={handleOpenSignIn} />
-      </Dialog>
-
-      <Dialog
-        open={isOpenSignUp}
-        onClose={handleCloseSignUp}
-        maxWidth="sm"
-        fullWidth
-      >
-        <SignUp onClose={handleCloseSignUp} onOpenSignIn={handleOpenSignIn} />
-      </Dialog>
     </Box>
   );
 }

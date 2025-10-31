@@ -105,6 +105,7 @@ export default function Home() {
                   color: 'black',
                 },
               }}
+              onClick={() => router.push('/login')}
             >
               Start exploring
             </Button>

@@ -29,18 +29,13 @@ const Card = styled(MuiCard)(({ theme }) => ({
   flexDirection: 'column',
   alignSelf: 'center',
   width: '100%',
-  padding: theme.spacing(2),
-  gap: theme.spacing(1.5),
+  padding: theme.spacing(4),
+  gap: theme.spacing(2),
   margin: 'auto',
   boxShadow:
     'hsla(220, 30%, 5%, 0.05) 0px 5px 15px 0px, hsla(220, 25%, 10%, 0.05) 0px 15px 35px -5px',
   [theme.breakpoints.up('sm')]: {
-    padding: theme.spacing(3),
     width: '450px',
-    gap: theme.spacing(2),
-  },
-  [theme.breakpoints.up('md')]: {
-    padding: theme.spacing(4),
   },
   ...theme.applyStyles('dark', {
     boxShadow:
@@ -51,16 +46,20 @@ const Card = styled(MuiCard)(({ theme }) => ({
 const SignUpContainer = styled(Stack)(({ theme }) => ({
   height: 'calc((1 - var(--template-frame-height, 0)) * 100dvh)',
   minHeight: '100%',
-  padding: theme.spacing(1),
+  padding: theme.spacing(2),
+  background: 'linear-gradient(135deg, #FBEED7 0%, #E8D4B8 50%, #C9AE8E 100%)',
   [theme.breakpoints.up('sm')]: {
     padding: theme.spacing(2),
   },
   [theme.breakpoints.up('md')]: {
     padding: theme.spacing(4),
   },
+  ...theme.applyStyles('dark', {
+    background: 'linear-gradient(135deg, #FBEED7 0%, #E8D4B8 50%, #C9AE8E 100%)',
+  }),
 }));
 
-export default function SignUp(props: { disableCustomTheme?: boolean; onClose?: () => void; onOpenSignIn?: () => void }) {
+export default function SignUp() {
   const [emailError, setEmailError] = React.useState(false);
   const [emailErrorMessage, setEmailErrorMessage] = React.useState('');
   const [usernameError, setUsernameError] = React.useState(false);
@@ -201,214 +200,211 @@ export default function SignUp(props: { disableCustomTheme?: boolean; onClose?: 
 
   const handleVerificationDialogClose = () => {
     setShowVerificationDialog(false);
-    if (props.onClose) props.onClose();
-    // Open sign in modal after closing verification dialog
-    setTimeout(() => {
-      if (props.onOpenSignIn) props.onOpenSignIn();
-    }, 300);
+    // Navigate to sign in page after closing verification dialog
+    router.push('/login');
   };
 
   return (
-    <AppTheme {...props}>
+    <AppTheme>
       <CssBaseline enableColorScheme />
-      {/* Email Verification Dialog */}
-      <Dialog
-        open={showVerificationDialog}
-        onClose={handleVerificationDialogClose}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle sx={{ textAlign: 'center', pt: 4 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-            <CheckCircleOutlineIcon sx={{ fontSize: 60, color: 'success.main' }} />
-          </Box>
-          <Typography variant="h5" fontWeight={600}>
-            Verify Your Email
-          </Typography>
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ textAlign: 'center', px: 2 }}>
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 1,
-                mb: 2,
-                p: 2,
-                bgcolor: 'action.hover',
-                borderRadius: 1
-              }}
-            >
-              <EmailIcon color="primary" />
-              <Typography variant="body1" fontWeight={500}>
-                {userEmail}
-              </Typography>
-            </Box>
+      <SignUpContainer>
 
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-              We've sent a verification link to your email address. Please check your inbox and click the verification link to activate your account.
-            </Typography>
+        <Card>
 
-            <Box sx={{ bgcolor: 'info.lighter', p: 2, borderRadius: 1, mb: 2 }}>
-              <Typography variant="body2" color="info.dark">
-                <strong>Important:</strong> You must verify your email before you can sign in.
-              </Typography>
-            </Box>
-
-            <Typography variant="body2" color="text.secondary">
-              Didn't receive the email? Check your spam folder or contact support.
-            </Typography>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ justifyContent: 'center', pb: 3, gap: 1 }}>
-          <Button
-            variant="contained"
-            onClick={handleVerificationDialogClose}
-            size="large"
-          >
-            Got it, Sign In
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Box sx={{ p: 3, maxHeight: '80vh', overflow: 'auto' }}>
-        <Typography
-          component="h1"
-          variant="h4"
-          sx={{
-            width: '100%',
-            fontSize: { xs: '1.5rem', sm: '2rem', md: '2.15rem' },
-            textAlign: 'center',
-            mb: 3
-          }}
-        >
-          Sign up
-        </Typography>
-        <Box
-          component="form"
-          onSubmit={handleSubmit}
-          sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
-        >
-          <FormControl>
-            <FormLabel htmlFor="first name">First name</FormLabel>
-            <TextField
-              autoComplete="firstname"
-              name="firstname"
-              required
-              fullWidth
-              id="firstname"
-              placeholder="Jon"
-              error={firstnameError}
-              helperText={firstNameErrorMessage}
-              color={firstnameError ? 'error' : 'primary'}
-            />
-          </FormControl>
-          <FormControl>
-            <FormLabel htmlFor="name">Last name</FormLabel>
-            <TextField
-              autoComplete="lastname"
-              name="lastname"
-              required
-              fullWidth
-              id="lastname"
-              placeholder="Snow"
-              error={lastnameError}
-              helperText={lastNameErrorMessage}
-              color={lastnameError ? 'error' : 'primary'}
-            />
-          </FormControl>
-          <FormControl>
-            <FormLabel htmlFor="email">Email</FormLabel>
-            <TextField
-              required
-              fullWidth
-              id="email"
-              placeholder="your@email.com"
-              name="email"
-              autoComplete="email"
-              variant="outlined"
-              error={emailError}
-              helperText={emailErrorMessage}
-              color={passwordError ? 'error' : 'primary'}
-            />
-          </FormControl>
-          <FormControl>
-            <FormLabel htmlFor="phone">Phone</FormLabel>
-            <TextField
-              required
-              fullWidth
-              id="phone"
-              placeholder="1234567890"
-              name="phone"
-              autoComplete="phone"
-              variant="outlined"
-              error={phoneError}
-              helperText={phoneErrorMessage}
-              color={phoneError ? 'error' : 'primary'}
-            />
-          </FormControl>
-          <FormControl>
-            <FormLabel htmlFor="user name">Username</FormLabel>
-            <TextField
-              autoComplete="username"
-              name="username"
-              required
-              fullWidth
-              id="username"
-              placeholder="Your username"
-              error={usernameError}
-              helperText={usernameErrorMessage}
-              color={usernameError ? 'error' : 'primary'}
-            />
-          </FormControl>
-          <FormControl>
-            <FormLabel htmlFor="password">Password</FormLabel>
-            <TextField
-              required
-              fullWidth
-              name="password"
-              placeholder="••••••"
-              type="password"
-              id="password"
-              autoComplete="new-password"
-              variant="outlined"
-              error={passwordError}
-              helperText={passwordErrorMessage}
-              color={passwordError ? 'error' : 'primary'}
-            />
-          </FormControl>
-
-          <Button
-            type="submit"
+          <Dialog
+            open={showVerificationDialog}
+            onClose={handleVerificationDialogClose}
+            maxWidth="sm"
             fullWidth
-            variant="contained"
-            onClick={validateInputs}
           >
-            Sign up
-          </Button>
-        </Box>
-        <Divider sx={{ my: 2 }}>
-          <Typography sx={{ color: 'text.secondary' }}>or</Typography>
-        </Divider>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Typography sx={{ textAlign: 'center' }}>
-            Already have an account?{' '}
-            <Link
-              variant="body2"
-              sx={{ alignSelf: 'center' }}
-              onClick={() => {
-                if (props.onClose) props.onClose();
-                setTimeout(() => {
-                  if (props.onOpenSignIn) props.onOpenSignIn();
-                }, 300);
+            <DialogTitle sx={{ textAlign: 'center', pt: 4 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                <CheckCircleOutlineIcon sx={{ fontSize: 60, color: 'success.main' }} />
+              </Box>
+              <Typography variant="h5" fontWeight={600}>
+                Verify Your Email
+              </Typography>
+            </DialogTitle>
+            <DialogContent>
+              <Box sx={{ textAlign: 'center', px: 2 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 1,
+                    mb: 2,
+                    p: 2,
+                    bgcolor: 'action.hover',
+                    borderRadius: 1
+                  }}
+                >
+                  <EmailIcon color="primary" />
+                  <Typography variant="body1" fontWeight={500}>
+                    {userEmail}
+                  </Typography>
+                </Box>
+
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+                  We've sent a verification link to your email address. Please check your inbox and click the verification link to activate your account.
+                </Typography>
+
+                <Box sx={{ bgcolor: 'info.lighter', p: 2, borderRadius: 1, mb: 2 }}>
+                  <Typography variant="body2" color="info.dark">
+                    <strong>Important:</strong> You must verify your email before you can sign in.
+                  </Typography>
+                </Box>
+
+                <Typography variant="body2" color="text.secondary">
+                  Didn't receive the email? Check your spam folder or contact support.
+                </Typography>
+              </Box>
+            </DialogContent>
+            <DialogActions sx={{ justifyContent: 'center', pb: 3, gap: 1 }}>
+              <Button
+                variant="contained"
+                onClick={handleVerificationDialogClose}
+                size="large"
+              >
+                Got it, Sign In
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          <Box sx={{ p: 3, maxHeight: '80vh', overflow: 'auto' }}>
+            <Typography
+              component="h1"
+              variant="h4"
+              sx={{
+                width: '100%',
+                fontSize: { xs: '1.5rem', sm: '2rem', md: '2.15rem' },
+                textAlign: 'center',
+                mb: 3
               }}
             >
-              Sign in
-            </Link>
-          </Typography>
-        </Box>
-      </Box>
+              Sign up
+            </Typography>
+            <Box
+              component="form"
+              onSubmit={handleSubmit}
+              sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+            >
+              <FormControl>
+                <FormLabel htmlFor="first name">First name</FormLabel>
+                <TextField
+                  autoComplete="firstname"
+                  name="firstname"
+                  required
+                  fullWidth
+                  id="firstname"
+                  placeholder="Jon"
+                  error={firstnameError}
+                  helperText={firstNameErrorMessage}
+                  color={firstnameError ? 'error' : 'primary'}
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel htmlFor="name">Last name</FormLabel>
+                <TextField
+                  autoComplete="lastname"
+                  name="lastname"
+                  required
+                  fullWidth
+                  id="lastname"
+                  placeholder="Snow"
+                  error={lastnameError}
+                  helperText={lastNameErrorMessage}
+                  color={lastnameError ? 'error' : 'primary'}
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel htmlFor="email">Email</FormLabel>
+                <TextField
+                  required
+                  fullWidth
+                  id="email"
+                  placeholder="your@email.com"
+                  name="email"
+                  autoComplete="email"
+                  variant="outlined"
+                  error={emailError}
+                  helperText={emailErrorMessage}
+                  color={passwordError ? 'error' : 'primary'}
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel htmlFor="phone">Phone</FormLabel>
+                <TextField
+                  required
+                  fullWidth
+                  id="phone"
+                  placeholder="1234567890"
+                  name="phone"
+                  autoComplete="phone"
+                  variant="outlined"
+                  error={phoneError}
+                  helperText={phoneErrorMessage}
+                  color={phoneError ? 'error' : 'primary'}
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel htmlFor="user name">Username</FormLabel>
+                <TextField
+                  autoComplete="username"
+                  name="username"
+                  required
+                  fullWidth
+                  id="username"
+                  placeholder="Your username"
+                  error={usernameError}
+                  helperText={usernameErrorMessage}
+                  color={usernameError ? 'error' : 'primary'}
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel htmlFor="password">Password</FormLabel>
+                <TextField
+                  required
+                  fullWidth
+                  name="password"
+                  placeholder="••••••"
+                  type="password"
+                  id="password"
+                  autoComplete="new-password"
+                  variant="outlined"
+                  error={passwordError}
+                  helperText={passwordErrorMessage}
+                  color={passwordError ? 'error' : 'primary'}
+                />
+              </FormControl>
+
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                onClick={validateInputs}
+              >
+                Sign up
+              </Button>
+            </Box>
+            <Divider sx={{ my: 2 }}>
+              <Typography sx={{ color: 'text.secondary' }}>or</Typography>
+            </Divider>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Typography sx={{ textAlign: 'center' }}>
+                Already have an account?{' '}
+                <Link
+                  variant="body2"
+                  sx={{ alignSelf: 'center', cursor: 'pointer' }}
+                  onClick={() => router.push('/login')}
+                >
+                  Sign in
+                </Link>
+              </Typography>
+            </Box>
+          </Box>
+        </Card>
+      </SignUpContainer>
     </AppTheme>
   );
 }
