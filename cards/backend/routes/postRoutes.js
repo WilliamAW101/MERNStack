@@ -4,10 +4,11 @@ const router = express.Router();
 // import functions
 const connectToDatabase = require('../config/database.js');
 const { authenticateToken } = require('../middleware/authMiddleware.js');
+const { responseJSON } = require('../utils/json.js');
 
 router.post('/addPost', authenticateToken, async (req, res) => {
     // Payload receiving: caption, difficulty, rating, images (nullable), location (nullable)
-    // Payload sending: postId, timestamp, error
+    // Payload sending: success, data: { postId, timestamp }, message
     try {
         const {
             caption,
@@ -20,21 +21,21 @@ router.post('/addPost', authenticateToken, async (req, res) => {
         // Get userId from authenticated token
         const userId = req.user.id;
         if (!caption) {
-            return res.status(400).json({ error: 'Caption is required' });
+            return responseJSON(res, false, { code: 'Bad Request' }, 'Caption is required', 400);
         }
         if (difficulty === undefined || difficulty === null) {
-            return res.status(400).json({ error: 'Difficulty is required' });
+            return responseJSON(res, false, { code: 'Bad Request' }, 'Difficulty is required', 400);
         }
         if (rating === undefined || rating === null) {
-            return res.status(400).json({ error: 'Rating is required' });
+            return responseJSON(res, false, { code: 'Bad Request' }, 'Rating is required', 400);
         }
 
         // Validate difficulty and rating are numbers
         if (typeof difficulty !== 'number' || difficulty < 0) {
-            return res.status(400).json({ error: 'Difficulty must be a non-negative number' });
+            return responseJSON(res, false, { code: 'Bad Request' }, 'Difficulty must be a non-negative number', 400);
         }
         if (typeof rating !== 'number' || rating < 0) {
-            return res.status(400).json({ error: 'Rating must be a non-negative number' });
+            return responseJSON(res, false, { code: 'Bad Request' }, 'Rating must be a non-negative number', 400);
         }
 
         const db = await connectToDatabase();
@@ -59,22 +60,21 @@ router.post('/addPost', authenticateToken, async (req, res) => {
         // Insert new post into the database
         const result = await collection.insertOne(newPost);
 
-        const ret = {
+        const data = {
             postId: result.insertedId,
-            timestamp,
-            error: ''
+            timestamp
         };
 
-        res.status(201).json(ret);
+        return responseJSON(res, true, data, 'Post created successfully!', 201);
     } catch (e) {
         console.error('Add post error:', e);
-        res.status(500).json({ error: 'Internal server error' });
+        return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to create post', 500);
     }
 });
 
 router.post('/addComment', authenticateToken, async (req, res) => {
     // Payload receiving: postId, commentText
-    // Payload sending: commentId, timestamp, error
+    // Payload sending: success, data: { commentId, timestamp }, message
     try {
         const { postId, commentText } = req.body;
 
@@ -84,10 +84,10 @@ router.post('/addComment', authenticateToken, async (req, res) => {
 
         // Validate required fields
         if (!postId) {
-            return res.status(400).json({ error: 'Post ID is required' });
+            return responseJSON(res, false, { code: 'Bad Request' }, 'Post ID is required', 400);
         }
         if (!commentText || commentText.trim() === '') {
-            return res.status(400).json({ error: 'Comment text is required' });
+            return responseJSON(res, false, { code: 'Bad Request' }, 'Comment text is required', 400);
         }
 
         const db = await connectToDatabase();
@@ -100,12 +100,12 @@ router.post('/addComment', authenticateToken, async (req, res) => {
         try {
             postObjectId = new ObjectId(postId);
         } catch (e) {
-            return res.status(400).json({ error: 'Invalid post ID format' });
+            return responseJSON(res, false, { code: 'Bad Request' }, 'Invalid post ID format', 400);
         }
 
         const post = await collection.findOne({ _id: postObjectId });
         if (!post) {
-            return res.status(404).json({ error: 'Post not found' });
+            return responseJSON(res, false, { code: 'Not Found' }, 'Post not found', 404);
         }
 
         const timestamp = new Date();
@@ -128,22 +128,21 @@ router.post('/addComment', authenticateToken, async (req, res) => {
             }
         );
 
-        const ret = {
+        const data = {
             commentId: newComment.commentId,
-            timestamp,
-            error: ''
+            timestamp
         };
 
-        res.status(201).json(ret);
+        return responseJSON(res, true, data, 'Comment added successfully!', 201);
     } catch (e) {
         console.error('Add comment error:', e);
-        res.status(500).json({ error: 'Internal server error' });
+        return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to add comment', 500);
     }
 });
 
 router.post('/likePost', authenticateToken, async (req, res) => {
     // Payload receiving: postId
-    // Payload sending: likeCount, error
+    // Payload sending: success, data: { likeCount }, message
     try {
         const { postId } = req.body;
 
@@ -152,7 +151,7 @@ router.post('/likePost', authenticateToken, async (req, res) => {
 
         // Validate required fields
         if (!postId) {
-            return res.status(400).json({ error: 'Post ID is required' });
+            return responseJSON(res, false, { code: 'Bad Request' }, 'Post ID is required', 400);
         }
 
         const db = await connectToDatabase();
@@ -165,17 +164,17 @@ router.post('/likePost', authenticateToken, async (req, res) => {
         try {
             postObjectId = new ObjectId(postId);
         } catch (e) {
-            return res.status(400).json({ error: 'Invalid post ID format' });
+            return responseJSON(res, false, { code: 'Bad Request' }, 'Invalid post ID format', 400);
         }
 
         const post = await collection.findOne({ _id: postObjectId });
         if (!post) {
-            return res.status(404).json({ error: 'Post not found' });
+            return responseJSON(res, false, { code: 'Not Found' }, 'Post not found', 404);
         }
 
         // Check if user already liked the post
         if (post.likes && post.likes.includes(userId)) {
-            return res.status(400).json({ error: 'You have already liked this post' });
+            return responseJSON(res, false, { code: 'Bad Request' }, 'You have already liked this post', 400);
         }
 
         // Add user to likes array and increment like count
@@ -187,15 +186,14 @@ router.post('/likePost', authenticateToken, async (req, res) => {
             }
         );
 
-        const ret = {
-            likeCount: post.likeCount + 1,
-            error: ''
+        const data = {
+            likeCount: post.likeCount + 1
         };
 
-        res.status(200).json(ret);
+        return responseJSON(res, true, data, 'Post liked successfully!', 200);
     } catch (e) {
         console.error('Like post error:', e);
-        res.status(500).json({ error: 'Internal server error' });
+        return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to like post', 500);
     }
 });
 
