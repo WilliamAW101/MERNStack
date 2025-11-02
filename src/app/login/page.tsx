@@ -1,12 +1,16 @@
 import SignIn from "@/components/SignIn"
+import Header from "@/components/Header"
 import { Box } from "@mui/material"
 
 
 export default function LoginPage() {
 
   return (
-    <Box>
+    <>
+      <Header />
+      <Box>
         <SignIn/>
-    </Box>
+      </Box>
+    </>
   )
 }

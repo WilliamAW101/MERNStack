@@ -1,44 +1,61 @@
 import * as React from 'react';
-import Button from '@mui/material/Button';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
-import DialogTitle from '@mui/material/DialogTitle';
-import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import FormLabel from '@mui/material/FormLabel';
+import FormControl from '@mui/material/FormControl';
+import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { useToast } from '@/context/toast';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import EmailIcon from '@mui/icons-material/Email';
+import { useToast } from '@/context/toast';
+import { useRouter } from 'next/navigation';
 
 interface ResetPasswordProps {
-    open: boolean;
-    handleClose: () => void;
     email: string;
-    onPasswordReset?: () => void;
 }
 
-export default function ResetPassword({ open, handleClose, email, onPasswordReset }: ResetPasswordProps) {
+export default function ResetPassword({ email }: ResetPasswordProps) {
     const [loading, setLoading] = React.useState(false);
     const [password, setPassword] = React.useState('');
     const [confirmPassword, setConfirmPassword] = React.useState('');
-    const [error, setError] = React.useState('');
+    const [passwordError, setPasswordError] = React.useState(false);
+    const [passwordErrorMessage, setPasswordErrorMessage] = React.useState('');
+    const [confirmPasswordError, setConfirmPasswordError] = React.useState(false);
+    const [confirmPasswordErrorMessage, setConfirmPasswordErrorMessage] = React.useState('');
     const toast = useToast();
+    const router = useRouter();
     const baseUrl = process.env.REMOTE_URL;
+
+    const validatePassword = () => {
+        let isValid = true;
+
+        // Validate password length
+        if (!password || password.length < 6) {
+            setPasswordError(true);
+            setPasswordErrorMessage('Password must be at least 6 characters long');
+            isValid = false;
+        } else {
+            setPasswordError(false);
+            setPasswordErrorMessage('');
+        }
+
+        // Validate passwords match
+        if (!confirmPassword || password !== confirmPassword) {
+            setConfirmPasswordError(true);
+            setConfirmPasswordErrorMessage('Passwords do not match');
+            isValid = false;
+        } else {
+            setConfirmPasswordError(false);
+            setConfirmPasswordErrorMessage('');
+        }
+
+        return isValid;
+    };
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        setError('');
 
-        // Validate passwords match
-        if (password !== confirmPassword) {
-            setError('Passwords do not match');
-            return;
-        }
-
-        // Validate password length
-        if (password.length < 6) {
-            setError('Password must be at least 6 characters long');
+        if (!validatePassword()) {
             return;
         }
 
@@ -54,9 +71,8 @@ export default function ResetPassword({ open, handleClose, email, onPasswordRese
             const result = await response.json();
 
             if (result.success) {
-                toast.success("Password reset successfully!");
-                handleClose();
-                if (onPasswordReset) onPasswordReset();
+                toast.success("Password reset successfully! Please sign in with your new password.");
+                router.push('/login');
             } else {
                 toast.error(result.message || "Failed to reset password");
             }
@@ -69,71 +85,118 @@ export default function ResetPassword({ open, handleClose, email, onPasswordRese
     };
 
     return (
-        <Dialog
-            open={open}
-            onClose={handleClose}
-            maxWidth="xs"
-            fullWidth
-        >
-            <Box component="form" onSubmit={handleSubmit}>
-                <DialogTitle>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <CheckCircleOutlineIcon color="success" />
-                        Reset Your Password
-                    </Box>
-                </DialogTitle>
-                <DialogContent
-                    sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}
-                >
-                    <DialogContentText>
-                        Create a new password for <strong>{email}</strong>
-                    </DialogContentText>
+        <>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
+                <CheckCircleOutlineIcon sx={{ fontSize: 48, color: 'success.main', mr: 1 }} />
+                <Typography component="h1" variant="h5">
+                    Reset Your Password
+                </Typography>
+            </Box>
+
+            <Box
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    mb: 2,
+                    p: 2,
+                    bgcolor: 'action.hover',
+                    borderRadius: 1
+                }}
+            >
+                <EmailIcon color="primary" />
+                <Typography variant="body2" fontWeight={500}>
+                    {email}
+                </Typography>
+            </Box>
+
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                Create a new password for your account. Make sure it's at least 6 characters long.
+            </Typography>
+
+            <Box
+                component="form"
+                onSubmit={handleSubmit}
+                noValidate
+                sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+            >
+                <FormControl>
+                    <FormLabel htmlFor="password">New Password</FormLabel>
                     <TextField
+                        error={passwordError}
+                        helperText={passwordErrorMessage}
+                        id="password"
+                        type="password"
+                        name="password"
+                        placeholder="Enter new password"
                         autoFocus
                         required
-                        margin="dense"
-                        id="password"
-                        name="password"
-                        label="New Password"
-                        placeholder="Enter new password"
-                        type="password"
                         fullWidth
                         variant="outlined"
+                        color={passwordError ? 'error' : 'primary'}
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        error={!!error}
+                        onChange={(e) => {
+                            setPassword(e.target.value);
+                            if (passwordError) {
+                                setPasswordError(false);
+                                setPasswordErrorMessage('');
+                            }
+                        }}
                     />
+                </FormControl>
+
+                <FormControl>
+                    <FormLabel htmlFor="confirmPassword">Confirm Password</FormLabel>
                     <TextField
-                        required
-                        margin="dense"
+                        error={confirmPasswordError}
+                        helperText={confirmPasswordErrorMessage}
                         id="confirmPassword"
-                        name="confirmPassword"
-                        label="Confirm Password"
-                        placeholder="Confirm new password"
                         type="password"
+                        name="confirmPassword"
+                        placeholder="Confirm new password"
+                        required
                         fullWidth
                         variant="outlined"
+                        color={confirmPasswordError ? 'error' : 'primary'}
                         value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        error={!!error}
-                        helperText={error}
+                        onChange={(e) => {
+                            setConfirmPassword(e.target.value);
+                            if (confirmPasswordError) {
+                                setConfirmPasswordError(false);
+                                setConfirmPasswordErrorMessage('');
+                            }
+                        }}
                     />
-                    <Typography variant="body2" color="text.secondary">
-                        Password must be at least 6 characters long.
+                </FormControl>
+
+                <Box sx={{ bgcolor: 'info.lighter', p: 2, borderRadius: 1 }}>
+                    <Typography variant="body2" color="info.dark">
+                        <strong>Password Requirements:</strong>
                     </Typography>
-                </DialogContent>
-                <DialogActions sx={{ pb: 3, px: 3 }}>
-                    <Button onClick={handleClose} disabled={loading}>Cancel</Button>
-                    <Button
-                        variant="contained"
-                        type="submit"
-                        disabled={loading || !password || !confirmPassword}
-                    >
-                        {loading ? 'Resetting...' : 'Reset Password'}
-                    </Button>
-                </DialogActions>
+                    <Typography variant="body2" color="info.dark">
+                        • At least 6 characters long
+                    </Typography>
+                </Box>
+
+                <Button
+                    type="submit"
+                    fullWidth
+                    variant="contained"
+                    disabled={loading || !password || !confirmPassword}
+                >
+                    {loading ? 'Resetting...' : 'Reset Password'}
+                </Button>
+
+                <Button
+                    type="button"
+                    fullWidth
+                    variant="text"
+                    onClick={() => router.push('/login')}
+                >
+                    Back to Sign In
+                </Button>
             </Box>
-        </Dialog>
+        </>
     );
 }
 

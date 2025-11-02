@@ -17,6 +17,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import PersonIcon from '@mui/icons-material/Person';
 import { Typography, Divider } from '@mui/material';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 const StyledToolbar = styled(Toolbar)(({ theme }) => ({
   display: 'flex',
@@ -43,7 +44,14 @@ export default function Header() {
   };
 
   React.useEffect(() => {
-    setIsAuthenticated(!!getToken());
+    const checkAuth = () => {
+      setIsAuthenticated(!!getToken());
+    };
+    checkAuth();
+
+    // Listen for storage changes (when user logs in/out in another tab)
+    window.addEventListener('storage', checkAuth);
+    return () => window.removeEventListener('storage', checkAuth);
   }, [getToken]);
 
   const handleUserMenuClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -66,11 +74,11 @@ export default function Header() {
     }}>
       <AppBar
         sx={{
-          mt: 'calc(var(--template-frame-height, 0px))',
           width: '100%',
           boxShadow: 0,
           bgcolor: 'transparent',
           background: 'transparent',
+          borderBottom: 'none',
         }}
       >
         <StyledToolbar variant="dense" disableGutters sx={{ px: { xs: 1, sm: 2 } }}>
@@ -81,6 +89,7 @@ export default function Header() {
                 backgroundColor: 'transparent',
                 borderRadius: 'none',
                 border: 'none',
+                color: 'inherit',
                 '&:focus': {
                   outline: 'none',
                   border: 'none',
@@ -93,18 +102,20 @@ export default function Header() {
             >
               <MountainIcon />
             </IconButton>
-            <Typography
-              variant="h6"
-              sx={{
-                color: 'white',
-                fontWeight: 700,
-                fontSize: { xs: '1rem', sm: '1.25rem', md: '1.5rem' },
-                lineHeight: 1,
-                textShadow: '1px 1px 2px rgba(0, 0, 0, 0.5)',
-              }}
-            >
-              CragTag
-            </Typography>
+            <Link href="/">
+              <Typography
+                variant="h6"
+                sx={{
+                  color: 'white',
+                  fontWeight: 700,
+                  fontSize: { xs: '1rem', sm: '1.25rem', md: '1.5rem' },
+                  lineHeight: 1,
+                  textShadow: '1px 1px 2px rgba(0, 0, 0, 0.5)',
+                }}
+              >
+                CragTag
+              </Typography>
+            </Link>
           </Box>
           <Box
             sx={{
