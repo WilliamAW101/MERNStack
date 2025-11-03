@@ -11,4 +11,12 @@ const connectToDatabase = async () => {
     return client.db(process.env.DATABASE)
 }
 
+const closeDatabase = async () => {
+    if (client) {
+        await client.close();
+        client = null;
+    }
+}
+
 module.exports = connectToDatabase;
+module.exports.closeDatabase = closeDatabase;
