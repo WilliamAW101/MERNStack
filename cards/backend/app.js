@@ -7,6 +7,7 @@ const postRoutes = require('./routes/postRoutes.js');
 const app = express();
 
 const authenticationRoutes = require('./routes/authRoutes.js');
+const postRoutes = require('./routes/postRoutes.js');
 
 // Middleware
 app.use(cors());
