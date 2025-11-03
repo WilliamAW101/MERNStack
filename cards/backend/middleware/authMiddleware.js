@@ -1,4 +1,4 @@
-const { checkExpired } = require('../utils/authentication.js');
+const { checkExpired, refreshToken } = require('../utils/authentication.js');
 const { responseJSON } = require('../utils/json.js');
 
 const authenticateToken = (req, res, next) => {
@@ -20,7 +20,8 @@ const authenticateToken = (req, res, next) => {
     // Attach user info to request object
     req.user = {
         id: decoded.id,
-        userName: decoded.userName
+        userName: decoded.userName,
+        token: refreshToken(token) // provide refreshed token
     };
 
     next();
