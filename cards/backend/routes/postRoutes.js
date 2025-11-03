@@ -53,8 +53,7 @@ router.post('/addPost', authenticateToken, async (req, res) => {
             timestamp,
             likeCount: 0,
             likes: [], // Array of userIds who liked the post
-            commentCount: 0,
-            comments: [] // Array of comment objects
+            commentCount: 0
         };
 
         // Insert new post into the database
@@ -91,7 +90,8 @@ router.post('/addComment', authenticateToken, async (req, res) => {
         }
 
         const db = await connectToDatabase();
-        const collection = db.collection('post');
+        const postCollection = db.collection('post');
+        const commentCollection = db.collection('comment');
 
         // Check if post exists
         const { ObjectId } = require('mongodb');
@@ -103,33 +103,33 @@ router.post('/addComment', authenticateToken, async (req, res) => {
             return responseJSON(res, false, { code: 'Bad Request' }, 'Invalid post ID format', 400);
         }
 
-        const post = await collection.findOne({ _id: postObjectId });
+        const post = await postCollection.findOne({ _id: postObjectId });
         if (!post) {
             return responseJSON(res, false, { code: 'Not Found' }, 'Post not found', 404);
         }
 
         const timestamp = new Date();
 
-        // Create comment object
+        // Create comment document
         const newComment = {
-            commentId: new ObjectId(),
+            postId: postObjectId,
             userId,
             userName,
             commentText: commentText.trim(),
             timestamp
         };
 
-        // Add comment to post and increment comment count
-        await collection.updateOne(
+        // Insert comment into comments collection
+        const result = await commentCollection.insertOne(newComment);
+
+        // Increment comment count on post
+        await postCollection.updateOne(
             { _id: postObjectId },
-            {
-                $push: { comments: newComment },
-                $inc: { commentCount: 1 }
-            }
+            { $inc: { commentCount: 1 } }
         );
 
         const data = {
-            commentId: newComment.commentId,
+            commentId: result.insertedId,
             timestamp
         };
 
@@ -137,6 +137,53 @@ router.post('/addComment', authenticateToken, async (req, res) => {
     } catch (e) {
         console.error('Add comment error:', e);
         return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to add comment', 500);
+    }
+});
+
+router.get('/getComments', authenticateToken, async (req, res) => {
+    // Payload receiving: postId, limit (optional), skip (optional)
+    // Payload sending: success, data: { comments: [], total }, message
+    try {
+        const { postId, limit = 20, skip = 0 } = req.query;
+
+        // Validate required fields
+        if (!postId) {
+            return responseJSON(res, false, { code: 'Bad Request' }, 'Post ID is required', 400);
+        }
+
+        const db = await connectToDatabase();
+        const commentCollection = db.collection('comment');
+
+        // Validate postId format
+        const { ObjectId } = require('mongodb');
+        let postObjectId;
+
+        try {
+            postObjectId = new ObjectId(postId);
+        } catch (e) {
+            return responseJSON(res, false, { code: 'Bad Request' }, 'Invalid post ID format', 400);
+        }
+
+        // Fetch comments for the post with pagination
+        const comments = await commentCollection
+            .find({ postId: postObjectId })
+            .sort({ timestamp: -1 }) // Most recent first
+            .skip(parseInt(skip))
+            .limit(parseInt(limit))
+            .toArray();
+
+        // Get total count of comments for this post
+        const total = await commentCollection.countDocuments({ postId: postObjectId });
+
+        const data = {
+            comments,
+            total
+        };
+
+        return responseJSON(res, true, data, 'Comments retrieved successfully!', 200);
+    } catch (e) {
+        console.error('Get comments error:', e);
+        return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to retrieve comments', 500);
     }
 });
 

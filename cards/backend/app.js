@@ -5,6 +5,7 @@ const express = require('express');
 const app = express();
 
 const authenticationRoutes = require('./routes/authRoutes.js');
+const postRoutes = require('./routes/postRoutes.js');
 
 // Middleware
 app.use(cors());
@@ -12,6 +13,7 @@ app.use(express.json());
 
 // api routes
 app.use('/api', authenticationRoutes);
+app.use('/api', postRoutes);
 
 // CORS headers (redundant with cors() but kept for explicit control)...Kool
 app.use((req, res, next) => {
