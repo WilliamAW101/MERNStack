@@ -218,11 +218,13 @@ describe('POST /api/addPost', () => {
             .send(payload);
 
         expect(res.status).toBe(201);
-        expect(res.body.error).toBe('');
-        expect(res.body.postId).toBeTruthy();
-        expect(res.body.timestamp).toBeTruthy();
+        expect(res.body.success).toBe(true);
+        expect(res.body.message).toBe('Post created successfully!');
+        expect(res.body.data.postId).toBeTruthy();
+        expect(res.body.data.timestamp).toBeTruthy();
 
-        const createdId = res.body.postId?.$oid || res.body.postId;
+        const createdId =
+            res.body.data.postId?.$oid || res.body.data.postId;
 
         const db = await connectToDatabase();
         const storedPost = await db
