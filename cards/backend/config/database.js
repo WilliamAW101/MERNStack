@@ -11,6 +11,7 @@ const connectToDatabase = async () => {
     return client.db(process.env.DATABASE)
 }
 
+// Function to close the database connection (useful for testing)
 const closeDatabase = async () => {
     if (client) {
         await client.close();

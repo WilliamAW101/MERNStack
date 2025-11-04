@@ -1,6 +1,8 @@
 require('dotenv').config(); // for environment variables
 const cors = require('cors');
 const express = require('express');
+const uploadsRouter = require('./routes/uploads');
+const postRoutes = require('./routes/postRoutes.js');
 
 const app = express();
 
@@ -12,6 +14,8 @@ app.use(express.json());
 
 // api routes
 app.use('/api', authenticationRoutes);
+app.use('/api', uploadsRouter);
+app.use('/api', postRoutes);
 
 // CORS headers (redundant with cors() but kept for explicit control)...Kool
 app.use((req, res, next) => {
