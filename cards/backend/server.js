@@ -1,5 +1,10 @@
 const app = require('./app');
 
+<<<<<<< HEAD
+=======
+const authenticationRoutes = require('./routes/authRoutes.js');
+const postRoutes = require('./routes/postRoutes.js');
+>>>>>>> 1f8629b (updating history and fixing it (#4))
 const PORT = process.env.PORT || 5000;
 
 // Only start the HTTP listener when this file is executed directly.
@@ -9,4 +14,26 @@ if (require.main === module) {
     });
 }
 
+<<<<<<< HEAD
+=======
+// api routes
+app.use('/api', authenticationRoutes);
+app.use('/api', postRoutes);
+
+// CORS headers (redundant with cors() but kept for explicit control)...Kool
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader(
+        'Access-Control-Allow-Headers',
+        'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+    );
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+    next();
+});
+
+app.listen(5000, () => {
+    // start Node + Express server on port 5000
+    console.log('Server listening on port 5000');
+});
+>>>>>>> 1f8629b (updating history and fixing it (#4))
 module.exports = app;
