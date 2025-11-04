@@ -43,7 +43,7 @@ const sendVerificationEmail = async (to, token) => {
   const verifyLink = `http://localhost:5000/api/verifyEmail?token=${token}`; // will need to change later
 
   const mailOptions = {
-    from: `"CragTag" <${process.env.EMAIL_USER}>`,
+    from: `"CraigTag" <${process.env.EMAIL_USER}>`,
     to,
     subject: 'Verify your email address',
     html: `
@@ -71,7 +71,7 @@ const sendPasswordChangeToken = async (to, code) => {
   sgMail.setApiKey(process.env.SENDGRIND_API_KEY);
 
   const mailOptions = {
-    from: `"CragTag" <${process.env.EMAIL_USER}>`,
+    from: `"CraigTag" <${process.env.EMAIL_USER}>`,
     to,
     subject: 'Code for Password Change',
     html: `
@@ -111,9 +111,10 @@ const genResetCode = async (res, email) => {
   }
 
   // generating code for user to provide
-  const code = (crypto.randomInt(0, 1000000)).toString().padStart(6, '0');
+  const length = 16;
+  const code = crypto.randomBytes(length).toString('hex');
   const id = user._id;
   return { id, code };
 }
 
-module.exports = { hashPass, verifyPass, generateToken, checkExpired, sendVerificationEmail, genEmailToken, sendPasswordChangeToken, genResetCode, refreshToken };
+module.exports = { hashPass, verifyPass, generateToken, checkExpired, sendVerificationEmail, genEmailToken, sendPasswordChangeToken, genResetCode };
