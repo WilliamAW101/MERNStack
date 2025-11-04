@@ -2,8 +2,8 @@
 name: CI
 
 on:
-  push: { branches: [Alyssa] }
-  pull_request: { branches: [Alyssa] }
+  push: { branches: [main, Alyssa] }
+  pull_request: { branches: [main, Alyssa] }
   workflow_dispatch:
 
 concurrency:

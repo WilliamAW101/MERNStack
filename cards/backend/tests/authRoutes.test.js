@@ -1,11 +1,32 @@
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const { ObjectId } = require('mongodb');
+const jwt = require('jsonwebtoken');
+const { ObjectId } = require('mongodb');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
 const connectToDatabase = require('../config/database');
 const closeDatabase = connectToDatabase.closeDatabase;
 const { hashPass } = require('../utils/authentication');
+
+const mockGetSignedUrl = jest.fn().mockResolvedValue('https://example.com/signed');
+
+jest.mock('@aws-sdk/client-s3', () => {
+    const S3Client = jest.fn().mockImplementation(() => ({}));
+    const PutObjectCommand = jest.fn().mockImplementation(input => input);
+    const GetObjectCommand = jest.fn().mockImplementation(input => input);
+    return { S3Client, PutObjectCommand, GetObjectCommand };
+});
+
+jest.mock('@aws-sdk/s3-request-presigner', () => ({
+    getSignedUrl: (...args) => mockGetSignedUrl(...args)
+}));
+
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
+process.env.SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || 'dummy';
+process.env.EMAIL_USER = process.env.EMAIL_USER || 'test@example.com';
+process.env.AWS_REGION = process.env.AWS_REGION || 'us-east-2';
+process.env.S3_BUCKET = process.env.S3_BUCKET || 'test-bucket';
 
 const mockGetSignedUrl = jest.fn().mockResolvedValue('https://example.com/signed');
 
@@ -53,13 +74,40 @@ beforeEach(async () => {
     mockGetSignedUrl.mockReset();
     mockGetSignedUrl.mockResolvedValue('https://example.com/signed');
 
+    mockGetSignedUrl.mockReset();
+    mockGetSignedUrl.mockResolvedValue('https://example.com/signed');
+
     const db = await connectToDatabase();
     await Promise.all([
         db.collection('user').deleteMany({}),
         db.collection('passwordVerify').deleteMany({}).catch(() => null),
         db.collection('post').deleteMany({}).catch(() => null),
+        db.collection('post').deleteMany({}).catch(() => null),
     ]);
 });
+
+const createVerifiedUserWithToken = async (overrides = {}) => {
+    const db = await connectToDatabase();
+    const userDoc = {
+        userName: 'poster',
+        password: overrides.password || 'hashed-pass',
+        email: 'poster@example.com',
+        phone: '000-000-0000',
+        firstName: 'Post',
+        lastName: 'Er',
+        verified: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        ...overrides
+    };
+    const { insertedId } = await db.collection('user').insertOne(userDoc);
+    const token = jwt.sign(
+        { id: insertedId.toString(), userName: userDoc.userName },
+        process.env.JWT_SECRET,
+        { expiresIn: '1h' }
+    );
+    return { token, userId: insertedId.toString(), userDoc };
+};
 
 const createVerifiedUserWithToken = async (overrides = {}) => {
     const db = await connectToDatabase();
