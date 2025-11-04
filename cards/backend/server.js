@@ -2,6 +2,7 @@ const app = require('./app');
 
 const authenticationRoutes = require('./routes/authRoutes.js');
 const postRoutes = require('./routes/postRoutes.js');
+const homepageRoutes = require('./routes/homepageRoutes.js');
 const PORT = process.env.PORT || 5000;
 
 // Only start the HTTP listener when this file is executed directly.
@@ -14,6 +15,7 @@ if (require.main === module) {
 // api routes
 app.use('/api', authenticationRoutes);
 app.use('/api', postRoutes);
+app.use('/api', homepageRoutes);
 
 // CORS headers (redundant with cors() but kept for explicit control)...Kool
 app.use((req, res, next) => {
