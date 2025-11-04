@@ -3,9 +3,9 @@ name: CI
 
 on:
   push:
-    branches: [Alyssa]
+    branches: [feature-homepage, Alyssa]
   pull_request:
-    branches: [Alyssa]
+    branches: [feature-homepage, Alyssa]
   workflow_dispatch:
 
 concurrency:
