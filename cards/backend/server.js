@@ -1,10 +1,7 @@
 const app = require('./app');
 
-<<<<<<< HEAD
-=======
 const authenticationRoutes = require('./routes/authRoutes.js');
 const postRoutes = require('./routes/postRoutes.js');
->>>>>>> 1f8629b (updating history and fixing it (#4))
 const PORT = process.env.PORT || 5000;
 
 // Only start the HTTP listener when this file is executed directly.
@@ -14,8 +11,6 @@ if (require.main === module) {
     });
 }
 
-<<<<<<< HEAD
-=======
 // api routes
 app.use('/api', authenticationRoutes);
 app.use('/api', postRoutes);
