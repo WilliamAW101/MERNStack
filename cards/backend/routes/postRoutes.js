@@ -40,18 +40,6 @@ router.post('/addPost', authenticateToken, async (req, res) => {
 
     const db = await connectToDatabase();
     const collection = db.collection('post');
-        const newPost = {
-            userId,
-            caption,
-            difficulty,
-            rating,
-            images: images || null,
-            location: location || null,
-            timestamp,
-            likeCount: 0,
-            likes: [], // Array of userIds who liked the post
-            commentCount: 0
-        };
 
     const timestamp = new Date();
 
@@ -66,7 +54,6 @@ router.post('/addPost', authenticateToken, async (req, res) => {
       likeCount: 0,
       likes: [],
       commentCount: 0,
-      comments: []
     };
 
     const result = await collection.insertOne(newPost);
