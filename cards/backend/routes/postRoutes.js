@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { ObjectId } = require('mongodb');
 
 // import functions
 const connectToDatabase = require('../config/database.js');
@@ -52,7 +53,6 @@ router.post('/addPost', authenticateToken, async (req, res) => {
       location: location || null,
       timestamp,
       likeCount: 0,
-      likes: [],
       commentCount: 0,
     };
 
@@ -139,53 +139,6 @@ router.post('/addComment', authenticateToken, async (req, res) => {
     }
 });
 
-router.get('/getComments', authenticateToken, async (req, res) => {
-    // Payload receiving: postId, limit (optional), skip (optional)
-    // Payload sending: success, data: { comments: [], total }, message
-    try {
-        const { postId, limit = 20, skip = 0 } = req.query;
-
-        // Validate required fields
-        if (!postId) {
-            return responseJSON(res, false, { code: 'Bad Request' }, 'Post ID is required', 400);
-        }
-
-        const db = await connectToDatabase();
-        const commentCollection = db.collection('comment');
-
-        // Validate postId format
-        const { ObjectId } = require('mongodb');
-        let postObjectId;
-
-        try {
-            postObjectId = new ObjectId(postId);
-        } catch (e) {
-            return responseJSON(res, false, { code: 'Bad Request' }, 'Invalid post ID format', 400);
-        }
-
-        // Fetch comments for the post with pagination
-        const comments = await commentCollection
-            .find({ postId: postObjectId })
-            .sort({ timestamp: -1 }) // Most recent first
-            .skip(parseInt(skip))
-            .limit(parseInt(limit))
-            .toArray();
-
-        // Get total count of comments for this post
-        const total = await commentCollection.countDocuments({ postId: postObjectId });
-
-        const data = {
-            comments,
-            total
-        };
-
-        return responseJSON(res, true, data, 'Comments retrieved successfully!', 200);
-    } catch (e) {
-        console.error('Get comments error:', e);
-        return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to retrieve comments', 500);
-    }
-});
-
 router.post('/likePost', authenticateToken, async (req, res) => {
     // Payload receiving: postId
     // Payload sending: success, data: { likeCount }, message
@@ -193,7 +146,8 @@ router.post('/likePost', authenticateToken, async (req, res) => {
         const { postId } = req.body;
 
         // Get userId from authenticated token
-        const userId = req.user.id;
+        const userIdraw = req.user.id;
+        const userId = new ObjectId(userIdraw);
 
         // Validate required fields
         if (!postId) {
@@ -202,11 +156,10 @@ router.post('/likePost', authenticateToken, async (req, res) => {
 
         const db = await connectToDatabase();
         const collection = db.collection('post');
+        const likesCollection = db.collection('likes');
 
         // Check if post exists
-        const { ObjectId } = require('mongodb');
         let postObjectId;
-
         try {
             postObjectId = new ObjectId(postId);
         } catch (e) {
@@ -223,14 +176,12 @@ router.post('/likePost', authenticateToken, async (req, res) => {
             return responseJSON(res, false, { code: 'Bad Request' }, 'You have already liked this post', 400);
         }
 
-        // Add user to likes array and increment like count
-        const result = await collection.updateOne(
-            { _id: postObjectId },
-            {
-                $push: { likes: userId },
-                $inc: { likeCount: 1 }
-            }
-        );
+        await likesCollection.insertOne({
+            post_id: postObjectId,
+            user_id: userId,
+            user_name: req.user.userName,
+            likedAt: new Date()
+        });
 
         const data = {
             likeCount: post.likeCount + 1

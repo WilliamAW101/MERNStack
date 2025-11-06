@@ -50,7 +50,6 @@ router.get('/getComments', authenticateToken, async (req, res) => {
         const db = await connectToDatabase();
         const commentsCollection = db.collection('comment');
         const { postID, lastTimestamp } = req.query; // postID is required, lastTimestamp is optional
-        
         if (!postID) {
             return responseJSON(res, false, { code: 'Bad Request' }, 'postID is required', 400);
         }
@@ -69,6 +68,32 @@ router.get('/getComments', authenticateToken, async (req, res) => {
     catch (e) {
         error = e.toString();
         responseJSON(res, false, { code: 'Internal server error' }, 'comments endpoint failed ' + error, 500);
+    }
+});
+
+router.get('/getLikes', authenticateToken, async (req, res) => {
+    try {
+        const db = await connectToDatabase();
+        const likesCollection = db.collection('likes');
+        const { postID, lastTimestamp } = req.query; // postID is required, lastTimestamp is optional
+        if (!postID) {
+            return responseJSON(res, false, { code: 'Bad Request' }, 'postID is required', 400);
+        }
+        if (lastTimestamp && !isNaN(Date.parse(lastTimestamp))) {
+            query.timestamp = { $lt: new Date(lastTimestamp) };
+        }
+        const newpostID = new ObjectId(postID);
+        const likes = await likesCollection.find({ post_id: newpostID }).sort({ timestamp: -1 }).limit(20).toArray(); // fetch 20 latest likes before the lastTimestamp if provided
+
+        const nextCursor =  likes.length ? likes[likes.length - 1].timestamp : null // provide front-end with next cursor if there are more comments to fetch
+
+        const refreshedToken = req.user.token; // get refreshed token from middleware
+
+        responseJSON(res, true, { likes, nextCursor, refreshedToken}, 'likes endpoint success', 200);
+    }
+    catch (e) {
+        error = e.toString();
+        responseJSON(res, false, { code: 'Internal server error' }, 'likes endpoint failed ' + error, 500);
     }
 });
 
