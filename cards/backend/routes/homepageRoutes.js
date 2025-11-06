@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { ObjectId } = require('mongodb');
 
 // import functions
 const connectToDatabase = require('../config/database.js');
@@ -56,8 +57,8 @@ router.get('/getComments', authenticateToken, async (req, res) => {
         if (lastTimestamp && !isNaN(Date.parse(lastTimestamp))) {
             query.timestamp = { $lt: new Date(lastTimestamp) };
         }
-
-        const comments = await commentsCollection.find({ postId: postID }).sort({ timestamp: -1 }).limit(10).toArray(); // fetch 10 latest comments before the lastTimestamp if provided
+        const newpostID = new ObjectId(postID);
+        const comments = await commentsCollection.find({ postId: newpostID }).sort({ timestamp: -1 }).limit(10).toArray(); // fetch 10 latest comments before the lastTimestamp if provided
 
         const nextCursor =  comments.length ? comments[comments.length - 1].timestamp : null // provide front-end with next cursor if there are more comments to fetch
 
