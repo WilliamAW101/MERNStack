@@ -15,6 +15,7 @@ router.get('/homePage', authenticateToken, async (req, res) => {
         const db = await connectToDatabase();
         const homepageCollection = db.collection('post');
         const commentsCollection = db.collection('comment');
+        const userCollection = db.collection('user');
 
         const { lastTimestamp } = req.query; // optional for front-end we will just grab 10 latest posts if not provided
 
@@ -31,7 +32,10 @@ router.get('/homePage', authenticateToken, async (req, res) => {
 
         // we want to have frontend be given the first 3 comments for each post so they can display them for preview
         for (let post of posts) {
-            console.log("Fetching comments for post:", post._id);
+            const newUserID = new ObjectId(post.userId);
+            const user = await userCollection.findOne({ _id: newUserID });
+            post.userProfilePic = null;
+            post.username = user.userName;
             const comments = await commentsCollection.find({ postId: post._id }).sort({ timestamp: -1 }).limit(3).toArray();
             post.comments = comments; // attach the first 3 comments to the post object
         }
