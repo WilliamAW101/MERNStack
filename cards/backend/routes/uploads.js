@@ -15,7 +15,7 @@ const s3 = new S3Client({ region: process.env.AWS_REGION });
 router.post('/uploads/url', authenticateToken, async (req, res) => {
   try {
     const { contentType, ext } = req.body;
-    const allow = ['image/jpeg','image/png','image/webp','video/mp4', 'video/mov', 'image/heic'];
+    const allow = ['image/jpeg','image/png','image/webp','video/mp4', 'video/mov', 'image/heic', 'video/quicktime'];
     if (!allow.includes(contentType)) return res.status(400).json({ error: 'Invalid contentType' });
 
     const userId = req.user.id ;
