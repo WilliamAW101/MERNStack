@@ -19,6 +19,7 @@ const {
 
 router.get('/personalPosts', authenticateToken, async (req, res) => {
     try {
+        
         const db = await connectToDatabase();
         const postCollection = db.collection('post');
 
@@ -38,7 +39,7 @@ router.get('/personalPosts', authenticateToken, async (req, res) => {
         posts = await grabPosts(res, posts, db);
         if (posts == null)
             return;
-
+        
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
         
         responseJSON(res, true, { posts, nextCursor, refreshedToken}, 'profile endpoint success', 200);

@@ -7,7 +7,7 @@ const grabPosts = async (res, posts, db) => {
 
     const commentsCollection = db.collection('comment');
     const userCollection = db.collection('user');
-
+    
     // we want to have frontend be given the first 3 comments for each post so they can display them for preview
     for (let post of posts) {
         const newUserID = new ObjectId(post.userId); //don't care, it works
