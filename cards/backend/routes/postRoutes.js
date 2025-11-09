@@ -3,7 +3,7 @@ const router = express.Router();
 const { ObjectId } = require('mongodb');
 
 // import functions
-const connectToDatabase = require('../config/database.js');
+const { connectToDatabase } = require('../config/database.js');
 const { authenticateToken } = require('../middleware/authMiddleware.js');
 const { responseJSON } = require('../utils/json.js');
 

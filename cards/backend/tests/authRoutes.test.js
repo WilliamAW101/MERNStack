@@ -3,8 +3,7 @@ const jwt = require('jsonwebtoken');
 const { ObjectId } = require('mongodb');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
-const connectToDatabase = require('../config/database');
-const closeDatabase = connectToDatabase.closeDatabase;
+const { connectToDatabase, closeDatabase } = require('../config/database');
 const { hashPass } = require('../utils/authentication');
 
 const mockGetSignedUrl = jest.fn().mockResolvedValue('https://example.com/signed');

@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const sgMail = require('@sendgrid/mail');
-const connectToDatabase = require('../config/database');
+const { connectToDatabase } = require('../config/database.js');
 const crypto = require('crypto');
 
 const {

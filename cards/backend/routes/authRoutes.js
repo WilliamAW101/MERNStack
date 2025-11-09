@@ -3,7 +3,7 @@ const router = express.Router();
 const validator = require('validator');
 
 // import functions
-const connectToDatabase = require('../config/database.js');
+const { connectToDatabase } = require('../config/database.js');
 
 const {
     hashPass,
