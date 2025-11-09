@@ -45,19 +45,21 @@ router.get('/homePage', authenticateToken, async (req, res) => {
             
             
             // convert key to aws url
-            post.imageURL = null;
-            let imageKey = null;
+            post.imageURLs = null;
+            const imageURLs = [];
             if (Array.isArray(post.images) && post.images.length > 0) {
-                imageKey = post.images[0].key;
-            }
-
-            if (imageKey) {
-                post.imageURL = await grabURL(imageKey);
-                if (post.imageURL == null) {
-                    responseJSON(res, false, { code: 'AWS error' }, 'Failed to grab image URL ' + error, 500);
-                    return;
+                for (const image of post.images) {
+                    if (image.key) {
+                        const imageURL = await grabURL(image.key);
+                        if (imageURL == null) {
+                            responseJSON(res, false, { code: 'AWS error' }, 'Failed to grab image URL ', 500);
+                            return;
+                        }
+                        imageURLs.push(imageURL);
+                    }
                 }
             }
+            post.imageURLs = imageURLs
         }
 
         const refreshedToken = req.user.token; // get refreshed token from middleware
