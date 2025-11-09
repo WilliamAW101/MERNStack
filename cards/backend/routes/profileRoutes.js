@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { ObjectId } = require('mongodb');
 
 const { 
     authenticateToken
@@ -46,6 +47,87 @@ router.get('/personalPosts', authenticateToken, async (req, res) => {
     } catch (e) {
         error = e.toString();
         responseJSON(res, false, { code: 'Internal server error' }, 'personalPosts endpoint failed ' + error, 500);
+    }
+});
+
+router.get('/getProfileInfo', authenticateToken, async (req, res) => {
+    try {
+        const db = await connectToDatabase();
+        const userCollection = db.collection('user');
+
+        const userInfo = await userCollection.findOne({ _id: new ObjectId(req.user.id) });
+        if (!userInfo) {
+            return responseJSON(res, false, { code: 'Not found' }, 'User not found', 404);
+        }
+
+        const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
+
+        responseJSON(res, true, { userInfo, refreshedToken}, 'getProfileInfo endpoint success', 200);
+    } catch (e) {
+        error = e.toString();
+        responseJSON(res, false, { code: 'Internal server error' }, 'getProfileInfo endpoint failed ' + error, 500);
+    }
+});
+
+router.post('/changeProfileInfo', authenticateToken, async (req, res) => {
+    try {
+        const db = await connectToDatabase();
+        const userCollection = db.collection('user');
+
+        const { 
+            phone, 
+            firstName, 
+            lastName,
+            profileDescription
+        } = req.body;
+
+        const userInfo = await userCollection.findOne({ _id: new ObjectId(req.user.id) });
+        if (!userInfo) {
+            return responseJSON(res, false, { code: 'Not found' }, 'User not found', 404);
+        }
+
+        // we want to only update if changed
+        const updateFields = {};
+        if (phone != "") 
+            updateFields.phone = phone;
+        else
+            updateFields.phone = userInfo.phone;
+
+        if (firstName != "") 
+            updateFields.firstName = firstName;
+        else
+            updateFields.firstName = userInfo.firstName;
+
+        if (lastName != "") 
+            updateFields.lastName = lastName;
+        else
+            updateFields.lastName = userInfo.lastName;
+
+        if (profileDescription != "") 
+            updateFields.profileDescription = profileDescription;
+        else
+            updateFields.profileDescription = userInfo.profileDescription;
+
+        // Update the timestamp
+        updateFields.updatedAt = new Date();
+
+        updateFields.profilePicture = null;
+
+        // Update the user
+        const result = await userCollection.updateOne(
+            { _id: new ObjectId(req.user.id) },
+            { $set: updateFields }
+        );
+
+        const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
+
+        // Get updated user info
+        const updatedUser = await userCollection.findOne({ _id: new ObjectId(req.user.id) })
+
+        responseJSON(res, true, { updatedUser, refreshedToken}, 'changeProfile endpoint success', 200);
+    } catch (e) {
+        error = e.toString();
+        responseJSON(res, false, { code: 'Internal server error' }, 'changeProfile endpoint failed ' + error, 500);
     }
 });
 
