@@ -45,6 +45,7 @@ router.get('/homePage', authenticateToken, async (req, res) => {
             
             
             // convert key to aws url
+            post.imageURL = null;
             let imageKey = null;
             if (Array.isArray(post.images) && post.images.length > 0) {
                 imageKey = post.images[0].key;
