@@ -11,17 +11,18 @@ const {
 } = require('../middleware/authMiddleware.js');
 const {
     responseJSON
-} = require('../utils/json.js')
+} = require('../utils/json.js');
 const {
-    grabURL
-} = require('../utils/aws.js')
+    grabPosts
+} = require('../utils/posts.js');
+const {
+    refreshToken
+} = require('../utils/authentication.js');
 
 router.get('/homePage', authenticateToken, async (req, res) => {
     try {
         const db = await connectToDatabase();
         const homepageCollection = db.collection('post');
-        const commentsCollection = db.collection('comment');
-        const userCollection = db.collection('user');
 
         const { lastTimestamp } = req.query; // optional for front-end we will just grab 10 latest posts if not provided
         let query = {
@@ -31,38 +32,15 @@ router.get('/homePage', authenticateToken, async (req, res) => {
             query.timestamp = { $lt: new Date(lastTimestamp) };
         }
 
-        const posts = await homepageCollection.find(query).sort({ timestamp: -1 }).limit(10).toArray(); // fetch 10 latest posts before the lastTimestamp if provided
+        let posts = await homepageCollection.find(query).sort({ timestamp: -1 }).limit(10).toArray(); // fetch 10 latest posts before the lastTimestamp if provided
         const nextCursor =  posts.length ? posts[posts.length - 1].timestamp : null // provide front-end with next cursor if there are more posts to fetch
 
         // we want to have frontend be given the first 3 comments for each post so they can display them for preview
-        for (let post of posts) {
-            const newUserID = new ObjectId(post.userId); //don't care, it works
-            const user = await userCollection.findOne({ _id: newUserID });
-            post.userProfilePic = null; // TODO: will change once personal page is done
-            post.username = user.userName;
-            const comments = await commentsCollection.find({ postId: post._id }).sort({ timestamp: -1 }).limit(3).toArray();
-            post.comments = comments; // attach the first 3 comments to the post object
-            
-            
-            // convert key to aws url
-            post.imageURLs = null;
-            const imageURLs = [];
-            if (Array.isArray(post.images) && post.images.length > 0) {
-                for (const image of post.images) {
-                    if (image.key) {
-                        const imageURL = await grabURL(image.key);
-                        if (imageURL == null) {
-                            responseJSON(res, false, { code: 'AWS error' }, 'Failed to grab image URL ', 500);
-                            return;
-                        }
-                        imageURLs.push(imageURL);
-                    }
-                }
-            }
-            post.imageURLs = imageURLs
-        }
+        posts = await grabPosts(res, posts, db);
+        if (posts == null)
+            return;
 
-        const refreshedToken = req.user.token; // get refreshed token from middleware
+        const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
         
         responseJSON(res, true, { posts, nextCursor, refreshedToken}, 'homePage endpoint success', 200);
     } catch (e) {
@@ -88,7 +66,7 @@ router.get('/getComments', authenticateToken, async (req, res) => {
 
         const nextCursor =  comments.length ? comments[comments.length - 1].timestamp : null // provide front-end with next cursor if there are more comments to fetch
 
-        const refreshedToken = req.user.token; // get refreshed token from middleware
+        const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 
         responseJSON(res, true, { comments, nextCursor, refreshedToken}, 'comments endpoint success', 200);
     }
@@ -115,7 +93,7 @@ router.get('/getLikes', authenticateToken, async (req, res) => {
 
         const nextCursor =  likes.length ? likes[likes.length - 1].timestamp : null // provide front-end with next cursor if there are more comments to fetch
 
-        const refreshedToken = req.user.token; // get refreshed token from middleware
+        const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 
         responseJSON(res, true, { likes, nextCursor, refreshedToken}, 'likes endpoint success', 200);
     }

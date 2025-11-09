@@ -19,7 +19,8 @@ const authenticateToken = (req, res, next) => {
     // Attach user info to request object
     req.user = {
         id: decoded.id,
-        userName: decoded.userName
+        userName: decoded.userName,
+        token: token
     };
     
     next();

@@ -117,4 +117,4 @@ const genResetCode = async (res, email) => {
   return { id, code };
 }
 
-module.exports = { hashPass, verifyPass, generateToken, checkExpired, sendVerificationEmail, genEmailToken, sendPasswordChangeToken, genResetCode };
+module.exports = { hashPass, verifyPass, generateToken, checkExpired, sendVerificationEmail, genEmailToken, sendPasswordChangeToken, genResetCode, refreshToken };
