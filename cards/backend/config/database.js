@@ -19,5 +19,4 @@ const closeDatabase = async () => {
     }
 }
 
-module.exports = connectToDatabase;
-module.exports.closeDatabase = closeDatabase;
+module.exports = { connectToDatabase, closeDatabase };

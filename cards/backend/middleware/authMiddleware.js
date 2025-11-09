@@ -21,7 +21,7 @@ const authenticateToken = (req, res, next) => {
         id: decoded.id,
         userName: decoded.userName
     };
-
+    
     next();
 };
 
