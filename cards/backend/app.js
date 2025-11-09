@@ -5,6 +5,7 @@ const uploadsRouter = require('./routes/uploads');
 const authenticationRoutes = require('./routes/authRoutes.js');
 const postRoutes = require('./routes/postRoutes.js');
 const homePageRoutes = require('./routes/homepageRoutes.js');
+const profileRoutes = require('./routes/profileRoutes.js');
 
 const app = express();
 
@@ -17,6 +18,7 @@ app.use('/api', uploadsRouter);
 app.use('/api', authenticationRoutes);
 app.use('/api', postRoutes);
 app.use('/api', homePageRoutes);
+app.use('/api', profileRoutes);
 
 // CORS headers (redundant with cors() but kept for explicit control)...Kool
 app.use((req, res, next) => {

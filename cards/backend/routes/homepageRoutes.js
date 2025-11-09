@@ -3,13 +3,15 @@ const router = express.Router();
 const { ObjectId } = require('mongodb');
 
 // import functions
-const connectToDatabase = require('../config/database.js');
-const { authenticateToken } = require('../middleware/authMiddleware.js');
-
+const {
+    connectToDatabase
+} = require('../config/database.js');
+const { 
+    authenticateToken
+} = require('../middleware/authMiddleware.js');
 const {
     responseJSON
 } = require('../utils/json.js')
-
 const {
     grabURL
 } = require('../utils/aws.js')
@@ -22,7 +24,6 @@ router.get('/homePage', authenticateToken, async (req, res) => {
         const userCollection = db.collection('user');
 
         const { lastTimestamp } = req.query; // optional for front-end we will just grab 10 latest posts if not provided
-
         let query = {
             timestamp: { $lt: new Date() } // current time
         };
@@ -31,14 +32,13 @@ router.get('/homePage', authenticateToken, async (req, res) => {
         }
 
         const posts = await homepageCollection.find(query).sort({ timestamp: -1 }).limit(10).toArray(); // fetch 10 latest posts before the lastTimestamp if provided
-
         const nextCursor =  posts.length ? posts[posts.length - 1].timestamp : null // provide front-end with next cursor if there are more posts to fetch
 
         // we want to have frontend be given the first 3 comments for each post so they can display them for preview
         for (let post of posts) {
-            const newUserID = new ObjectId(post.userId);
+            const newUserID = new ObjectId(post.userId); //don't care, it works
             const user = await userCollection.findOne({ _id: newUserID });
-            post.userProfilePic = null;
+            post.userProfilePic = null; // TODO: will change once personal page is done
             post.username = user.userName;
             const comments = await commentsCollection.find({ postId: post._id }).sort({ timestamp: -1 }).limit(3).toArray();
             post.comments = comments; // attach the first 3 comments to the post object
@@ -82,6 +82,7 @@ router.get('/getComments', authenticateToken, async (req, res) => {
         if (lastTimestamp && !isNaN(Date.parse(lastTimestamp))) {
             query.timestamp = { $lt: new Date(lastTimestamp) };
         }
+
         const newpostID = new ObjectId(postID);
         const comments = await commentsCollection.find({ postId: newpostID }).sort({ timestamp: -1 }).limit(10).toArray(); // fetch 10 latest comments before the lastTimestamp if provided
 
@@ -108,6 +109,7 @@ router.get('/getLikes', authenticateToken, async (req, res) => {
         if (lastTimestamp && !isNaN(Date.parse(lastTimestamp))) {
             query.timestamp = { $lt: new Date(lastTimestamp) };
         }
+        
         const newpostID = new ObjectId(postID);
         const likes = await likesCollection.find({ post_id: newpostID }).sort({ timestamp: -1 }).limit(20).toArray(); // fetch 20 latest likes before the lastTimestamp if provided
 
