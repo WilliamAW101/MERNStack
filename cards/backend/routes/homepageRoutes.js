@@ -10,6 +10,10 @@ const {
     responseJSON
 } = require('../utils/json.js')
 
+const {
+    grabURL
+} = require('../utils/aws.js')
+
 router.get('/homePage', authenticateToken, async (req, res) => {
     try {
         const db = await connectToDatabase();
@@ -38,6 +42,21 @@ router.get('/homePage', authenticateToken, async (req, res) => {
             post.username = user.userName;
             const comments = await commentsCollection.find({ postId: post._id }).sort({ timestamp: -1 }).limit(3).toArray();
             post.comments = comments; // attach the first 3 comments to the post object
+            
+            
+            // convert key to aws url
+            let imageKey = null;
+            if (Array.isArray(post.images) && post.images.length > 0) {
+                imageKey = post.images[0].key;
+            }
+
+            if (imageKey) {
+                post.imageURL = await grabURL(imageKey);
+                if (post.imageURL == null) {
+                    responseJSON(res, false, { code: 'AWS error' }, 'Failed to grab image URL ' + error, 500);
+                    return;
+                }
+            }
         }
 
         const refreshedToken = req.user.token; // get refreshed token from middleware
