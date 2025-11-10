@@ -6,6 +6,9 @@ const { ObjectId } = require('mongodb');
 const { connectToDatabase } = require('../config/database.js');
 const { authenticateToken } = require('../middleware/authMiddleware.js');
 const { responseJSON } = require('../utils/json.js');
+const {
+    refreshToken
+} = require('../utils/authentication.js');
 
 router.post('/addPost', authenticateToken, async (req, res) => {
   // Payload in: { caption, difficulty, rating, images?: [{ key, type }], location? }
@@ -349,10 +352,64 @@ router.post('/addComment', authenticateToken, async (req, res) => {
             timestamp
         };
 
-        return responseJSON(res, true, data, 'Comment added successfully!', 201);
+        const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
+
+        return responseJSON(res, true, data, { refreshedToken },  'Comment added successfully!', 201);
     } catch (e) {
         console.error('Add comment error:', e);
         return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to add comment', 500);
+    }
+});
+
+router.delete('/deleteComment', authenticateToken, async (req, res) => {
+    try {
+        const { commentID } = req.body;
+
+        const db = await connectToDatabase();
+        const commentCollection = db.collection('comment');
+
+        const result = await commentCollection.deleteOne({ _id: new ObjectId(commentID) });
+        if (result.deletedCount == 0) {
+            return responseJSON(res, false, { code: 'Not Found' }, 'Comment not found and failed to delete', 404);
+        }
+        
+        const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
+
+        return responseJSON(res, true, { refreshedToken }, 'Comment deleted successfully!', 201);
+    } catch (e) {
+        console.error('delete comment error:', e);
+        return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to delete comment', 500);
+    }
+});
+
+router.post('/changeComment', authenticateToken, async (req, res) => {
+    try {
+        const { commentID, text } = req.body;
+
+        const db = await connectToDatabase();
+        const commentCollection = db.collection('comment');
+        const ID = new ObjectId(commentID);
+        const result = await commentCollection.findOne({ _id: ID });
+        if (!result) {
+            return responseJSON(res, false, { code: 'Not Found' }, 'Comment not found', 404);
+        }
+
+        await commentCollection.updateOne(
+            { _id: ID },
+            {  
+                $set: { 
+                    commentText: text,
+                    updatedAt: new Date()
+                }
+            }
+        );
+
+        const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
+
+        return responseJSON(res, true, { refreshedToken }, 'Comment updated successfully!', 201);
+    } catch (e) {
+        console.error('update comment error:', e);
+        return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to update comment', 500);
     }
 });
 
@@ -404,7 +461,9 @@ router.post('/likePost', authenticateToken, async (req, res) => {
             likeCount: post.likeCount + 1
         };
 
-        return responseJSON(res, true, data, 'Post liked successfully!', 200);
+        const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
+
+        return responseJSON(res, true, { data, refreshedToken }, 'Post liked successfully!', 200);
     } catch (e) {
         console.error('Like post error:', e);
         return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to like post', 500);
