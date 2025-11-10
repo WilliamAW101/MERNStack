@@ -144,7 +144,9 @@ router.post('/signup', async (req, res) => {
           lastName,
           createdAt: new Date(),
           updatedAt: new Date(),
-          verified: false // untill I can get this dang email verification working
+          verified: false,
+          profileDescription: null,
+          profilePicture: null
         };
 
         // // Email verification
