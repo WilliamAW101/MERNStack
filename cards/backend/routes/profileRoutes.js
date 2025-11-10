@@ -21,13 +21,31 @@ const {
 router.get('/personalPosts', authenticateToken, async (req, res) => {
     try {
         
+        // payload receiving
+        const requiredFields = {
+            userName,
+            lastTimestamp,
+        } = req.query;
+
+        // check to see if everything is filled out
+        const missingFields = Object.entries(requiredFields)
+            .filter(([, value]) => value === undefined || value === null || value === '')
+            .map(([key]) => key);
+
+        if (missingFields.length > 0) {
+            return responseJSON(res, false, { code: 'Bad Request' }, `Missing required field${missingFields.length > 1 ? 's' : ''}: ${missingFields.join(', ')}`, 400);
+        }
+
         const db = await connectToDatabase();
         const postCollection = db.collection('post');
+        const userCollection = db.collection('user');
 
-        const { lastTimestamp } = req.query;
+        const user = await userCollection.findOne({ userName });
+        console.log(user._id);
+
         let query = {
             timestamp: { $lt: new Date() }, // current time
-            userId: req.user.id
+            userId: user._id.toString()
         };
         if (lastTimestamp && !isNaN(Date.parse(lastTimestamp))) {
             query.timestamp = { $lt: new Date(lastTimestamp) };
@@ -52,17 +70,35 @@ router.get('/personalPosts', authenticateToken, async (req, res) => {
 
 router.get('/getProfileInfo', authenticateToken, async (req, res) => {
     try {
+        const requiredFields = {
+            userName
+        } = req.query;
+
+        // check to see if everything is filled out
+        const missingFields = Object.entries(requiredFields)
+            .filter(([, value]) => value === undefined || value === null || value === '')
+            .map(([key]) => key);
+
+        if (missingFields.length > 0) {
+            return responseJSON(res, false, { code: 'Bad Request' }, `Missing required field${missingFields.length > 1 ? 's' : ''}: ${missingFields.join(', ')}`, 400);
+        }
+
         const db = await connectToDatabase();
         const userCollection = db.collection('user');
+        const postCollection= db.collection('post');
 
-        const userInfo = await userCollection.findOne({ _id: new ObjectId(req.user.id) });
+        const userInfo = await userCollection.findOne({ userName: userName });
         if (!userInfo) {
             return responseJSON(res, false, { code: 'Not found' }, 'User not found', 404);
         }
 
+        const numberOfTotalPosts = await postCollection.countDocuments({
+            userId: userInfo._id.toString()
+        });
+
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 
-        responseJSON(res, true, { userInfo, refreshedToken}, 'getProfileInfo endpoint success', 200);
+        responseJSON(res, true, { userInfo, refreshedToken, numberOfTotalPosts}, 'getProfileInfo endpoint success', 200);
     } catch (e) {
         error = e.toString();
         responseJSON(res, false, { code: 'Internal server error' }, 'getProfileInfo endpoint failed ' + error, 500);
@@ -74,14 +110,15 @@ router.post('/changeProfileInfo', authenticateToken, async (req, res) => {
         const db = await connectToDatabase();
         const userCollection = db.collection('user');
 
-        const { 
+        const {
+            userName,
             phone, 
             firstName, 
             lastName,
             profileDescription
         } = req.body;
 
-        const userInfo = await userCollection.findOne({ _id: new ObjectId(req.user.id) });
+        const userInfo = await userCollection.findOne({ userName: userName });
         if (!userInfo) {
             return responseJSON(res, false, { code: 'Not found' }, 'User not found', 404);
         }
@@ -122,7 +159,7 @@ router.post('/changeProfileInfo', authenticateToken, async (req, res) => {
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 
         // Get updated user info
-        const updatedUser = await userCollection.findOne({ _id: new ObjectId(req.user.id) })
+        const updatedUser = await userCollection.findOne({ userName: userName })
 
         responseJSON(res, true, { updatedUser, refreshedToken}, 'changeProfile endpoint success', 200);
     } catch (e) {
