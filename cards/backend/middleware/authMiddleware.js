@@ -1,4 +1,3 @@
-const { decode } = require('jsonwebtoken');
 const { checkExpired } = require('../utils/authentication.js');
 
 const authenticateToken = (req, res, next) => {
@@ -16,12 +15,13 @@ const authenticateToken = (req, res, next) => {
     if (!decoded) {
         return res.status(403).json({ error: 'Invalid or expired token' });
     }
+
     // Attach user info to request object
     req.user = {
         id: decoded.id,
-        userName: decoded.userName,
-        token: token
+        userName: decoded.userName
     };
+    
     next();
 };
 

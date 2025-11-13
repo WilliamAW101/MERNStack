@@ -18,11 +18,10 @@ const verifyPass = async (password, hashedPassword) => { // just unhashing the p
 }
 
 const generateToken = (user) => { // creates token, I don't think I need to add anything else to the payload?
-  const userId = user._id || user.id;
   return jwt.sign(
-      { id: userId.toString(), userName: user.userName },
+      { id: user._id, userName: user.userName },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+      { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
   );
 }
 
@@ -118,4 +117,4 @@ const genResetCode = async (res, email) => {
   return { id, code };
 }
 
-module.exports = { hashPass, verifyPass, generateToken, checkExpired, sendVerificationEmail, genEmailToken, sendPasswordChangeToken, genResetCode, refreshToken };
+module.exports = { hashPass, verifyPass, generateToken, checkExpired, sendVerificationEmail, genEmailToken, sendPasswordChangeToken, genResetCode };
