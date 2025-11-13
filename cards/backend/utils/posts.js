@@ -43,7 +43,8 @@ const grabPosts = async (res, req, posts, db) => {
         post.userProfilePic = profileImageURL;
         
         // find out if user liked the post
-        const isLiked = await likeCollection.findOne({ post_id: new ObjectId(post._id),  user_name: req.user.userName });
+        const userObjectId = new ObjectId(req.user.id);
+        const isLiked = await likeCollection.findOne({ post_id: new ObjectId(post._id), user_id: userObjectId });
         if (isLiked) {
             post.isLiked = true;
         } else {

@@ -415,13 +415,13 @@ router.post('/changeComment', authenticateToken, async (req, res) => {
 
 router.post('/likePost', authenticateToken, async (req, res) => {
     // Payload receiving: postId
-    // Payload sending: success, data: { likeCount }, message
+    // Payload sending: success, data: { likeCount, isLiked }, message
     try {
         const { postId } = req.body;
 
-        // Get userId from authenticated token
-        const userIdraw = req.user.id;
-        const userId = new ObjectId(userIdraw);
+        // Get userId and userName from authenticated token
+        const userId = req.user.id;
+        const userName = req.user.userName;
 
         // Validate required fields
         if (!postId) {
@@ -429,10 +429,10 @@ router.post('/likePost', authenticateToken, async (req, res) => {
         }
 
         const db = await connectToDatabase();
-        const collection = db.collection('post');
+        const postCollection = db.collection('post');
         const likesCollection = db.collection('likes');
 
-        // Check if post exists
+        // Validate postId format
         let postObjectId;
         try {
             postObjectId = new ObjectId(postId);
@@ -440,33 +440,75 @@ router.post('/likePost', authenticateToken, async (req, res) => {
             return responseJSON(res, false, { code: 'Bad Request' }, 'Invalid post ID format', 400);
         }
 
-        const post = await collection.findOne({ _id: postObjectId });
+        // Check if post exists
+        const post = await postCollection.findOne({ _id: postObjectId });
         if (!post) {
             return responseJSON(res, false, { code: 'Not Found' }, 'Post not found', 404);
         }
 
-        // Check if user already liked the post
-        if (post.likes && post.likes.includes(userId)) {
-            return responseJSON(res, false, { code: 'Bad Request' }, 'You have already liked this post', 400);
-        }
+        let isLiked;
+        let message;
 
-        await likesCollection.insertOne({
+        // Convert userId to ObjectId
+        const userObjectId = new ObjectId(userId);
+
+        // Check if user already liked the post in likes collection
+        const existingLike = await likesCollection.findOne({
             post_id: postObjectId,
-            user_id: userId,
-            user_name: req.user.userName,
-            likedAt: new Date()
+            user_id: userObjectId
         });
 
+        if (existingLike) {
+            // User already liked - UNLIKE (remove from likes collection)
+            await likesCollection.deleteOne({
+                post_id: postObjectId,
+                user_id: userObjectId
+            });
+
+            // Decrement like count in post
+            await postCollection.updateOne(
+                { _id: postObjectId },
+                { $inc: { likeCount: -1 } }
+            );
+
+            isLiked = false;
+            message = 'Post unliked successfully!';
+        } else {
+            // User hasn't liked - ADD LIKE (add to likes collection)
+            const likedAt = new Date();
+            const newLike = {
+                post_id: postObjectId,
+                user_id: userObjectId,
+                likedAt
+            };
+
+            await likesCollection.insertOne(newLike);
+
+            // Increment like count in post
+            await postCollection.updateOne(
+                { _id: postObjectId },
+                { $inc: { likeCount: 1 } }
+            );
+
+            isLiked = true;
+            message = 'Post liked successfully!';
+        }
+
+        // Get updated like count
+        const updatedPost = await postCollection.findOne({ _id: postObjectId });
+        const likeCount = updatedPost.likeCount || 0;
+
         const data = {
-            likeCount: post.likeCount + 1
+            likeCount: likeCount,
+            isLiked: isLiked
         };
 
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 
-        return responseJSON(res, true, { data, refreshedToken }, 'Post liked successfully!', 200);
+        return responseJSON(res, true, { data, refreshedToken }, message, 200);
     } catch (e) {
         console.error('Like post error:', e);
-        return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to like post', 500);
+        return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to like/unlike post', 500);
     }
 });
 
