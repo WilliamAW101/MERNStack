@@ -44,7 +44,10 @@ router.get('/personalPosts', authenticateToken, async (req, res) => {
         const userCollection = db.collection('user');
 
         const user = await userCollection.findOne({ userName });
-        console.log(user._id);
+        
+        if (user == null) {
+            return responseJSON(res, false, { code: 'Not Found' }, 'User not found', 404);
+        }
 
         let query = {
             timestamp: { $lt: new Date() }, // current time
@@ -98,8 +101,12 @@ router.get('/getProfileInfo', authenticateToken, async (req, res) => {
         const numberOfTotalPosts = await postCollection.countDocuments({
             userId: userInfo._id.toString()
         });
-        const profileImageURL = await grabURL(userInfo.profilePicture.key);
-        userInfo. profilePic = profileImageURL;
+        
+        if (userInfo.profilePicture && userInfo.profilePicture.key)
+            profileImageURL = await grabURL(userInfo.profilePicture.key);
+        else
+            profileImageURL = null;
+        userInfo.userProfilePic = profileImageURL;
 
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 

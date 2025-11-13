@@ -13,7 +13,6 @@ const grabPosts = async (res, req, posts, db) => {
     for (let post of posts) {
         const newUserID = new ObjectId(post.userId); //don't care, it works
         const user = await userCollection.findOne({ _id: newUserID });
-        post.userProfilePic = null; // TODO: will change once personal page is done
         post.username = user.userName;
         const comments = await commentsCollection.find({ postId: post._id }).sort({ timestamp: -1 }).limit(3).toArray();
         post.comments = comments; // attach the first 3 comments to the post object
@@ -35,6 +34,14 @@ const grabPosts = async (res, req, posts, db) => {
             }
         }
         post.imageURLs = imageURLs
+        let profileImageURL = null;
+        
+        if (user.profilePicture && user.profilePicture.key)
+            profileImageURL = await grabURL(user.profilePicture.key);
+        else
+            profileImageURL = null;
+        post.userProfilePic = profileImageURL;
+        
         // find out if user liked the post
         const isLiked = await likeCollection.findOne({ post_id: new ObjectId(post._id),  user_name: req.user.userName });
         if (isLiked) {
