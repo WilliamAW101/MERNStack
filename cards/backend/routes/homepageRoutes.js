@@ -18,6 +18,9 @@ const {
 const {
     refreshToken
 } = require('../utils/authentication.js');
+const {
+    grabURL
+} = require('../utils/aws.js')
 
 router.get('/homePage', authenticateToken, async (req, res) => {
     try {
@@ -35,9 +38,10 @@ router.get('/homePage', authenticateToken, async (req, res) => {
         let posts = await homepageCollection.find(query).sort({ timestamp: -1 }).limit(10).toArray(); // fetch 10 latest posts before the lastTimestamp if provided
         const nextCursor =  posts.length ? posts[posts.length - 1].timestamp : null // provide front-end with next cursor if there are more posts to fetch
         // we want to have frontend be given the first 3 comments for each post so they can display them for preview
-        posts = await grabPosts(res, posts, db);
+        posts = await grabPosts(res, req, posts, db);
         if (posts == null)
             return;
+
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
         
         responseJSON(res, true, { posts, nextCursor, refreshedToken}, 'homePage endpoint success', 200);
@@ -51,6 +55,7 @@ router.get('/getComments', authenticateToken, async (req, res) => {
     try {
         const db = await connectToDatabase();
         const commentsCollection = db.collection('comment');
+        const userCollection = db.collection('user');
         const { postID, lastTimestamp } = req.query; // postID is required, lastTimestamp is optional
         if (!postID) {
             return responseJSON(res, false, { code: 'Bad Request' }, 'postID is required', 400);
@@ -63,6 +68,17 @@ router.get('/getComments', authenticateToken, async (req, res) => {
         const comments = await commentsCollection.find({ postId: newpostID }).sort({ timestamp: -1 }).limit(10).toArray(); // fetch 10 latest comments before the lastTimestamp if provided
 
         const nextCursor =  comments.length ? comments[comments.length - 1].timestamp : null // provide front-end with next cursor if there are more comments to fetch
+
+        for (let comment of comments) {
+            const user = await userCollection.findOne({ userName: comment.userName });
+            let profileImageURL = null;
+
+            if (user.profilePicture && user.profilePicture.key)
+                profileImageURL = await grabURL(user.profilePicture.key);
+            else
+                profileImageURL = null;
+            comment.userProfilePic = profileImageURL;
+        }
 
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 

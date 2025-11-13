@@ -39,4 +39,4 @@ const uploadURL = async (contentType, ext, userId) => {
     }
 } 
 
-module.exports = { grabURL };
+module.exports = { grabURL, uploadURL };
