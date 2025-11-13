@@ -3,10 +3,11 @@ const {
     grabURL
 } = require('../utils/aws.js')
 
-const grabPosts = async (res, posts, db) => {
+const grabPosts = async (res, req, posts, db) => {
 
     const commentsCollection = db.collection('comment');
     const userCollection = db.collection('user');
+    const likeCollection = db.collection('likes');
     
     // we want to have frontend be given the first 3 comments for each post so they can display them for preview
     for (let post of posts) {
@@ -34,6 +35,13 @@ const grabPosts = async (res, posts, db) => {
             }
         }
         post.imageURLs = imageURLs
+        // find out if user liked the post
+        const isLiked = await likeCollection.findOne({ post_id: new ObjectId(post._id),  user_name: req.user.userName });
+        if (isLiked) {
+            post.isLiked = true;
+        } else {
+            post.isLiked = false;
+        }
     }
     return posts;
 }

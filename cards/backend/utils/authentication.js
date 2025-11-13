@@ -22,7 +22,7 @@ const generateToken = (user) => { // creates token, I don't think I need to add 
   return jwt.sign(
       { id: userId.toString(), userName: user.userName },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
+      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
   );
 }
 

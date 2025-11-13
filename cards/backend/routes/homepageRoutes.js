@@ -35,9 +35,10 @@ router.get('/homePage', authenticateToken, async (req, res) => {
         let posts = await homepageCollection.find(query).sort({ timestamp: -1 }).limit(10).toArray(); // fetch 10 latest posts before the lastTimestamp if provided
         const nextCursor =  posts.length ? posts[posts.length - 1].timestamp : null // provide front-end with next cursor if there are more posts to fetch
         // we want to have frontend be given the first 3 comments for each post so they can display them for preview
-        posts = await grabPosts(res, posts, db);
+        posts = await grabPosts(res, req, posts, db);
         if (posts == null)
             return;
+
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
         
         responseJSON(res, true, { posts, nextCursor, refreshedToken}, 'homePage endpoint success', 200);

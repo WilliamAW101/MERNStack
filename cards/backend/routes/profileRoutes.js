@@ -17,6 +17,9 @@ const {
 const {
     refreshToken
 } = require('../utils/authentication.js');
+const {
+    grabURL
+} = require('../utils/aws.js')
 
 router.get('/personalPosts', authenticateToken, async (req, res) => {
     try {
@@ -55,7 +58,7 @@ router.get('/personalPosts', authenticateToken, async (req, res) => {
         const nextCursor =  posts.length ? posts[posts.length - 1].timestamp : null // provide front-end with next cursor if there are more posts to fetch
 
         // we want to have frontend be given the first 3 comments for each post so they can display them for preview
-        posts = await grabPosts(res, posts, db);
+        posts = await grabPosts(res, req, posts, db);
         if (posts == null)
             return;
         
@@ -95,6 +98,8 @@ router.get('/getProfileInfo', authenticateToken, async (req, res) => {
         const numberOfTotalPosts = await postCollection.countDocuments({
             userId: userInfo._id.toString()
         });
+        const profileImageURL = await grabURL(userInfo.profilePicture.key);
+        userInfo. profilePic = profileImageURL;
 
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 
@@ -165,6 +170,50 @@ router.post('/changeProfileInfo', authenticateToken, async (req, res) => {
     } catch (e) {
         error = e.toString();
         responseJSON(res, false, { code: 'Internal server error' }, 'changeProfile endpoint failed ' + error, 500);
+    }
+});
+
+router.post('/uploadProfilePictureKey', authenticateToken, async (req, res) => {
+    try {
+        // we need the content type of image and extension
+        const { 
+            key
+        } = req.body;
+
+        // Verify key belongs to this user
+        if (!key.startsWith(`profile/${req.user.id}/`)) {
+            return responseJSON(res, false, { code: 'This key does not belong to the current user' }, 'Invalid key', 403);
+        }
+
+        const db = await connectToDatabase();
+        const userCollection = db.collection('user');
+
+        const user = await userCollection.updateOne(
+            { _id: new ObjectId(req.user.id) },
+            {
+                $set: { 
+                    profilePicture: {
+                        provider: 's3',
+                        key: key,
+                        type: 'image'
+                    },
+                    updatedAt: new Date()
+                }
+            }
+        );
+
+        // Check if user was found and updated
+        if (user.matchedCount === 0) {
+            return responseJSON(res, false, { code: 'Not Found' }, 'User not found', 404);
+        }
+
+        const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
+
+        return responseJSON(res, true, { refreshedToken }, 'Upload URL generated and uploaded to database', 200);
+        
+    } catch (e) {
+        error = e.toString();
+        responseJSON(res, false, { code: 'Internal server error' }, 'uploadProfilePicture endpoint failed ' + error, 500);
     }
 });
 
