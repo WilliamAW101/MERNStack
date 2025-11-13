@@ -465,15 +465,6 @@ router.post('/likePost', authenticateToken, async (req, res) => {
                 }
             );
 
-            // Delete notification if user is unliking
-            const notificationCollection = db.collection('notification');
-            await notificationCollection.deleteOne({
-                recipientUserId: post.userId,
-                senderUserId: userId,
-                postId: postObjectId,
-                type: 'like'
-            });
-
             isLiked = false;
             message = 'Post unliked successfully!';
         } else {
@@ -485,21 +476,6 @@ router.post('/likePost', authenticateToken, async (req, res) => {
                     $inc: { likeCount: 1 }
                 }
             );
-
-            // Create notification for post owner (if not liking their own post)
-            if (post.userId !== userId) {
-                const notificationCollection = db.collection('notification');
-                await notificationCollection.insertOne({
-                    recipientUserId: post.userId,
-                    senderUserId: userId,
-                    senderUserName: req.user.userName,
-                    type: 'like',
-                    postId: postObjectId,
-                    message: `${req.user.userName} liked your post`,
-                    timestamp: new Date(),
-                    isRead: false
-                });
-            }
 
             isLiked = true;
             message = 'Post liked successfully!';
