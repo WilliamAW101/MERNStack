@@ -103,9 +103,9 @@ router.get('/getLikes', authenticateToken, async (req, res) => {
         }
         
         const newpostID = new ObjectId(postID);
-        const likes = await likesCollection.find({ post_id: newpostID }).sort({ timestamp: -1 }).limit(20).toArray(); // fetch 20 latest likes before the lastTimestamp if provided
+        const likes = await likesCollection.find({ post_id: newpostID }).sort({ likedAt: -1 }).limit(20).toArray(); // fetch 20 latest likes before the lastTimestamp if provided
 
-        const nextCursor =  likes.length ? likes[likes.length - 1].timestamp : null // provide front-end with next cursor if there are more comments to fetch
+        const nextCursor =  likes.length ? likes[likes.length - 1].likedAt : null // provide front-end with next cursor if there are more likes to fetch
 
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 

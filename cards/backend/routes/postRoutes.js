@@ -419,8 +419,9 @@ router.post('/likePost', authenticateToken, async (req, res) => {
     try {
         const { postId } = req.body;
 
-        // Get userId from authenticated token
+        // Get userId and userName from authenticated token
         const userId = req.user.id;
+        const userName = req.user.userName;
 
         // Validate required fields
         if (!postId) {
@@ -429,6 +430,7 @@ router.post('/likePost', authenticateToken, async (req, res) => {
 
         const db = await connectToDatabase();
         const postCollection = db.collection('post');
+        const likesCollection = db.collection('likes');
 
         // Validate postId format
         let postObjectId;
@@ -444,37 +446,48 @@ router.post('/likePost', authenticateToken, async (req, res) => {
             return responseJSON(res, false, { code: 'Not Found' }, 'Post not found', 404);
         }
 
-        // Initialize likes array if it doesn't exist
-        if (!post.likes) {
-            post.likes = [];
-        }
-
         let isLiked;
         let message;
 
-        // Check if user already liked the post
-        const userLikedIndex = post.likes.indexOf(userId);
+        // Convert userId to ObjectId
+        const userObjectId = new ObjectId(userId);
 
-        if (userLikedIndex !== -1) {
-            // User already liked - UNLIKE (remove from array)
+        // Check if user already liked the post in likes collection
+        const existingLike = await likesCollection.findOne({
+            post_id: postObjectId,
+            user_id: userObjectId
+        });
+
+        if (existingLike) {
+            // User already liked - UNLIKE (remove from likes collection)
+            await likesCollection.deleteOne({
+                post_id: postObjectId,
+                user_id: userObjectId
+            });
+
+            // Decrement like count in post
             await postCollection.updateOne(
                 { _id: postObjectId },
-                {
-                    $pull: { likes: userId },
-                    $inc: { likeCount: -1 }
-                }
+                { $inc: { likeCount: -1 } }
             );
 
             isLiked = false;
             message = 'Post unliked successfully!';
         } else {
-            // User hasn't liked - ADD LIKE (add to array)
+            // User hasn't liked - ADD LIKE (add to likes collection)
+            const likedAt = new Date();
+            const newLike = {
+                post_id: postObjectId,
+                user_id: userObjectId,
+                likedAt
+            };
+
+            await likesCollection.insertOne(newLike);
+
+            // Increment like count in post
             await postCollection.updateOne(
                 { _id: postObjectId },
-                {
-                    $push: { likes: userId },
-                    $inc: { likeCount: 1 }
-                }
+                { $inc: { likeCount: 1 } }
             );
 
             isLiked = true;
@@ -492,7 +505,7 @@ router.post('/likePost', authenticateToken, async (req, res) => {
 
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 
-        return responseJSON(res, true, { data, refreshedToken }, 'Post liked successfully!', 200);
+        return responseJSON(res, true, { data, refreshedToken }, message, 200);
     } catch (e) {
         console.error('Like post error:', e);
         return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to like/unlike post', 500);
