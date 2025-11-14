@@ -188,7 +188,7 @@ router.post('/uploadProfilePictureKey', authenticateToken, async (req, res) => {
         } = req.body;
 
         // Verify key belongs to this user
-        if (!key.startsWith(`profile/${req.user.id}/`)) {
+        if (!key.startsWith(`posts/${req.user.id}/`)) {
             return responseJSON(res, false, { code: 'This key does not belong to the current user' }, 'Invalid key', 403);
         }
 
