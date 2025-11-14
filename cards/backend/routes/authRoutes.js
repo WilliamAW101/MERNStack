@@ -3,7 +3,7 @@ const router = express.Router();
 const validator = require('validator');
 
 // import functions
-const connectToDatabase = require('../config/database.js');
+const { connectToDatabase } = require('../config/database.js');
 
 const {
     hashPass,
@@ -79,6 +79,7 @@ router.post('/login', async (req, res) => {
             firstName: user.firstName,
             lastName: user.lastName,
             token,
+            userName: user.userName
         };
 
         responseJSON(res, true, ret, 'User logged in successfully!', 200);
@@ -144,7 +145,9 @@ router.post('/signup', async (req, res) => {
           lastName,
           createdAt: new Date(),
           updatedAt: new Date(),
-          verified: false // untill I can get this dang email verification working
+          verified: false,
+          profileDescription: null,
+          profilePicture: null
         };
 
         // // Email verification
