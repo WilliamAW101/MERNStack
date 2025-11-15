@@ -1,5 +1,6 @@
 const { decode } = require('jsonwebtoken');
 const { checkExpired } = require('../utils/authentication.js');
+const { responseJSON } = require('../utils/json.js');
 
 const authenticateToken = (req, res, next) => {
     // Get token from Authorization header

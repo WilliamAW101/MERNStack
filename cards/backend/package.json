@@ -8,13 +8,9 @@
   "scripts": {
     "dev": "nodemon ./server.js",
     "start": "node server.js",
-    "test": "cross-env NODE_ENV=test jest --runInBand",
-    "test:watch": "cross-env NODE_ENV=test jest --watch",
-    "test:coverage": "cross-env NODE_ENV=test jest --coverage --runInBand"
-    "start": "node server.js",
-    "test": "cross-env NODE_ENV=test jest --runInBand",
-    "test:watch": "cross-env NODE_ENV=test jest --watch",
-    "test:coverage": "cross-env NODE_ENV=test jest --coverage --runInBand"
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage --runInBand"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.930.0",
