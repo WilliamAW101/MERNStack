@@ -13,7 +13,8 @@ const {
     responseJSON
 } = require('../utils/json.js');
 const {
-    grabPosts
+    grabPosts,
+    getCommentImageURL
 } = require('../utils/posts.js');
 const {
     refreshToken
@@ -65,20 +66,11 @@ router.get('/getComments', authenticateToken, async (req, res) => {
         }
 
         const newpostID = new ObjectId(postID);
-        const comments = await commentsCollection.find({ postId: newpostID }).sort({ timestamp: -1 }).limit(10).toArray(); // fetch 10 latest comments before the lastTimestamp if provided
+        let comments = await commentsCollection.find({ postId: newpostID }).sort({ timestamp: -1 }).limit(20).toArray(); // fetch 10 latest comments before the lastTimestamp if provided
 
         const nextCursor =  comments.length ? comments[comments.length - 1].timestamp : null // provide front-end with next cursor if there are more comments to fetch
 
-        for (let comment of comments) {
-            const user = await userCollection.findOne({ userName: comment.userName });
-            let profileImageURL = null;
-
-            if (user.profilePicture && user.profilePicture.key)
-                profileImageURL = await grabURL(user.profilePicture.key);
-            else
-                profileImageURL = null;
-            comment.userProfilePic = profileImageURL;
-        }
+        comments = await getCommentImageURL(comments, userCollection);
 
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 

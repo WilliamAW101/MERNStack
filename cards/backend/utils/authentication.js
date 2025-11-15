@@ -112,8 +112,7 @@ const genResetCode = async (res, email) => {
   }
 
   // generating code for user to provide
-  const length = 16;
-  const code = crypto.randomBytes(length).toString('hex');
+  const code = (parseInt(crypto.randomBytes(3).toString('hex'), 16) % 1000000).toString().padStart(6, '0');
   const id = user._id;
   return { id, code };
 }
