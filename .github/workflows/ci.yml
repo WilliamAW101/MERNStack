@@ -2,8 +2,10 @@
 name: CI
 
 on:
-  push: { branches: [main, Alyssa] }
-  pull_request: { branches: [main, Alyssa] }
+  push:
+    branches: [feature-homepage, Alyssa]
+  pull_request:
+    branches: [feature-homepage, Alyssa]
   workflow_dispatch:
 
 concurrency:
@@ -14,7 +16,20 @@ jobs:
   test-backend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Debug - show branch and tree
+        run: |
+          echo "Branch: $GITHUB_REF_NAME  SHA: $GITHUB_SHA"
+          pwd
+          ls -la
+          echo "---- cards ----"
+          ls -la cards || true
+          echo "---- cards/backend ----"
+          ls -la cards/backend || true
 
       - name: Use Node
         uses: actions/setup-node@v4
@@ -33,7 +48,7 @@ jobs:
           JWT_SECRET: test-secret
           SENDGRID_API_KEY: dummy
           EMAIL_USER: test@example.com
-        run: npm run test:coverage   # uses your cross-env jest script
+        run: npm run test:coverage
 
       - name: Upload coverage
         if: always()

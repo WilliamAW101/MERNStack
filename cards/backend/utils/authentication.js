@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const sgMail = require('@sendgrid/mail');
-const connectToDatabase = require('../config/database');
+const { connectToDatabase } = require('../config/database.js');
 const crypto = require('crypto');
 
 const {
@@ -18,10 +18,11 @@ const verifyPass = async (password, hashedPassword) => { // just unhashing the p
 }
 
 const generateToken = (user) => { // creates token, I don't think I need to add anything else to the payload?
+  const userId = user._id || user.id;
   return jwt.sign(
-      { id: user._id, userName: user.userName },
+      { id: userId.toString(), userName: user.userName },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
+      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
   );
 }
 
@@ -111,10 +112,9 @@ const genResetCode = async (res, email) => {
   }
 
   // generating code for user to provide
-  const length = 16;
-  const code = crypto.randomBytes(length).toString('hex');
+  const code = (parseInt(crypto.randomBytes(3).toString('hex'), 16) % 1000000).toString().padStart(6, '0');
   const id = user._id;
   return { id, code };
 }
 
-module.exports = { hashPass, verifyPass, generateToken, checkExpired, sendVerificationEmail, genEmailToken, sendPasswordChangeToken, genResetCode };
+module.exports = { hashPass, verifyPass, generateToken, checkExpired, sendVerificationEmail, genEmailToken, sendPasswordChangeToken, genResetCode, refreshToken };
