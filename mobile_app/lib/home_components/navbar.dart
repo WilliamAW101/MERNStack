@@ -16,12 +16,13 @@ class FbBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const barHeight = 75.0;
-    const iconSize  = 22.0;
-    const addSize   = 40.0; // black circle size
+    const barHeight = 70.0;
+    const iconSize  = 28.0;
+    const addSize   = 45.0; // black circle size
     const indicatorThickness = 3.0;
 
     final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final addIndex = items.indexWhere((e) => e.isAdd);
 
     return Align(
@@ -30,8 +31,8 @@ class FbBottomBar extends StatelessWidget {
         height: barHeight,
         margin: EdgeInsets.zero,
         decoration: BoxDecoration(
-        color: cs.surface,
-      ),
+          color: isDark ? Colors.black : Colors.white,
+        ),
         child: LayoutBuilder(
           builder: (context, c) {
             final itemWidth = c.maxWidth / items.length;
@@ -71,7 +72,7 @@ class FbBottomBar extends StatelessWidget {
                     final selected = i == currentIndex;
 
                     if (it.isAdd) {
-                      // center black circle with white plus (no label)
+                      // center smooth circle with white plus
                       return Expanded(
                         child: InkWell(
                           customBorder: const CircleBorder(),
@@ -83,10 +84,21 @@ class FbBottomBar extends StatelessWidget {
                                 width: addSize,
                                 height: addSize,
                                 decoration: BoxDecoration(
-                                  color: cs.primary, // or your custom color
+                                  color: cs.primary,
                                   shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: cs.primary.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      spreadRadius: 0,
+                                    ),
+                                  ],
                                 ),
-                                child: const Icon(Icons.add, color: Colors.white, size: 26),
+                                child: const Icon(
+                                  Icons.add,
+                                  color: Colors.white,
+                                  size: 26,
+                                ),
                               ),
                             ),
                           ),
@@ -101,29 +113,17 @@ class FbBottomBar extends StatelessWidget {
                       child: InkWell(
                         borderRadius: BorderRadius.circular(12),
                         onTap: () => onTap(i),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            SizedBox(
-                              height: iconSize,
-                              width: iconSize,
-                              child: Image.asset(
-                                it.asset,
-                                fit: BoxFit.contain,
-                                color: color,                 // tint PNG
-                                colorBlendMode: BlendMode.srcIn,
-                              ),
+                        child: Center(
+                          child: SizedBox(
+                            height: iconSize,
+                            width: iconSize,
+                            child: it.customIcon ?? Image.asset(
+                              it.asset,
+                              fit: BoxFit.contain,
+                              color: color,                 // tint PNG
+                              colorBlendMode: BlendMode.srcIn,
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              it.label,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: color,
-                                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     );
@@ -143,5 +143,6 @@ class FbItemData {
   final String asset;
   final String label;
   final bool isAdd; // mark center special item
-  const FbItemData(this.asset, this.label, {this.isAdd = false});
+  final Widget? customIcon; // optional custom widget (e.g., avatar)
+  const FbItemData(this.asset, this.label, {this.isAdd = false, this.customIcon});
 }

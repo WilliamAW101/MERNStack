@@ -6,7 +6,8 @@ import 'package:crag_tag/services/api.dart';
 
 // ---------- Reusable Register form (for SignIn's PageView) ----------
 class SignUpForm extends StatefulWidget {
-  const SignUpForm({super.key});
+  final VoidCallback? onSwitchToLogin;
+  const SignUpForm({super.key, this.onSwitchToLogin});
   @override
   State<SignUpForm> createState() => _SignUpFormState();
 }
@@ -61,11 +62,10 @@ class _SignUpFormState extends State<SignUpForm> {
       final data = resp['data'] as Map;
 
       if (status >= 200 && status < 300) {
-        final code = VerificationPage.generateCode();
         if (!mounted) return;
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => VerificationPage(destination: email, expectedCode: code)),
+          MaterialPageRoute(builder: (_) => VerificationPage(destination: email)),
         );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Account created! Verification code sent to $email')),
@@ -93,21 +93,21 @@ class _SignUpFormState extends State<SignUpForm> {
           style: const TextStyle(color: Colors.black, fontSize: 15),
           decoration: _inputDecoration('First Name', Icons.person_outline),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         TextField(
           controller: _lnameCtrl,
           keyboardType: TextInputType.name,
           style: const TextStyle(color: Colors.black, fontSize: 15),
           decoration: _inputDecoration('Last Name', Icons.person_outline),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         TextField(
           controller: _userCtrl,
           keyboardType: TextInputType.text,
           style: const TextStyle(color: Colors.black, fontSize: 15),
           decoration: _inputDecoration('Username', Icons.person),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         TextField(
           controller: _passCtrl,
           obscureText: _obscure,
@@ -119,14 +119,14 @@ class _SignUpFormState extends State<SignUpForm> {
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         TextField(
           controller: _emailCtrl,
           keyboardType: TextInputType.emailAddress,
           style: const TextStyle(color: Colors.black, fontSize: 15),
           decoration: _inputDecoration('Email', Icons.email_outlined),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         TextField(
           controller: _phoneCtrl,
           keyboardType: TextInputType.phone,
@@ -146,6 +146,37 @@ class _SignUpFormState extends State<SignUpForm> {
           child: _submitting
               ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
               : const Text('Create account', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        ),
+        const SizedBox(height: 36),
+        // Footer for register form
+        _SignUpFooter(onSwitchToLogin: widget.onSwitchToLogin),
+      ],
+    );
+  }
+}
+
+class _SignUpFooter extends StatelessWidget {
+  final VoidCallback? onSwitchToLogin;
+  const _SignUpFooter({super.key, this.onSwitchToLogin});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text(
+          "Already have an account? ",
+          style: TextStyle(color: Colors.black, fontSize: 15),
+        ),
+        GestureDetector(
+          onTap: onSwitchToLogin,
+          child: const Text(
+            'Sign in',
+            style: TextStyle(
+              color: Color(0xFF178E79),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       ],
     );
@@ -267,22 +298,6 @@ class _SignUpPageState extends State<SignUpPage> {
                     // the same form as reusable widget
                     const SignUpForm(),
 
-                    const SizedBox(height: 16),
-                    Row(
-                      children: const [
-                        Expanded(child: Divider(thickness: 1)),
-                        Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('Or', style: TextStyle(color: Colors.black))),
-                        Expanded(child: Divider(thickness: 1)),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    OutlinedButton.icon(
-                      onPressed: () {},
-                      icon: Image.asset('assets/images/google.png', height: 24, width: 24, fit: BoxFit.contain),
-                      label: const Text('Continue with Google',
-                          style: TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.w500)),
-                      style: _socialStyle(),
-                    ),
                     const SizedBox(height: 45),
                   ],
                 ),
@@ -311,15 +326,6 @@ InputDecoration _inputDecoration(String label, IconData icon) {
       borderRadius: BorderRadius.circular(14),
       borderSide: const BorderSide(color: Color.fromARGB(255, 62, 116, 108), width: 1.4),
     ),
-  );
-}
-
-ButtonStyle _socialStyle() {
-  return OutlinedButton.styleFrom(
-    foregroundColor: Colors.black87,
-    padding: const EdgeInsets.symmetric(vertical: 14),
-    side: BorderSide(color: Colors.grey.shade300),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
   );
 }
 

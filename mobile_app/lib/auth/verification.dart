@@ -2,16 +2,15 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'sign_in.dart';
+import 'reset_password.dart';
+import '../services/api.dart';
 
 class VerificationPage extends StatefulWidget {
-  final String destination;   // “We sent a code to …”
-  final String expectedCode;  // server code to validate against
+  final String destination;   // email address
 
   const VerificationPage({
     super.key,
     required this.destination,
-    required this.expectedCode,
   });
 
   static String generateCode([int len = 6]) {
@@ -58,19 +57,89 @@ class _VerificationPageState extends State<VerificationPage> {
 
   String get _entered => _ctrs.map((c) => c.text).join();
 
-  void _verify() {
-    final ok = _entered.length == _len && _entered == widget.expectedCode;
-    setState(() => _status = ok ? "success" : "error");
-    if (ok) {
-      Future.delayed(const Duration(milliseconds: 450), () {
+  Future<void> _verify() async {
+    if (_entered.length != _len) {
+      setState(() => _status = "error");
+      return;
+    }
+    
+    try {
+      // Check the code with the backend
+      final resp = await Api.checkCode(code: _entered);
+      
+      if (!mounted) return;
+      
+      if (resp['status'] == 200 && resp['data']['success'] == true) {
+        // Code is valid, get the user ID from the nested data object
+        final userId = resp['data']['data']?['id'];
+        
+        if (userId == null) {
+          setState(() => _status = "error");
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to get user ID from server'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+        
+        setState(() => _status = "success");
+        
+        // Navigate to reset password page with the user ID
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ResetPasswordPage(
+              userId: userId.toString(),
+            ),
+          ),
+        );
+      } else {
+        // Invalid code
+        setState(() => _status = "error");
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Verified! Please sign in.')),
+          const SnackBar(
+            content: Text('Invalid verification code'),
+            backgroundColor: Colors.red,
+          ),
         );
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const SignInPage()),
-          (route) => false,
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _status = "error");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error verifying code: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _resendCode() async {
+    try {
+      final resp = await Api.sendCode(email: widget.destination);
+      
+      if (!mounted) return;
+      
+      if ((resp['status'] == 200 || resp['status'] == 201) && resp['data']['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('New code sent to your email!'),
+            backgroundColor: Color(0xFF178E79),
+          ),
         );
-      });
+        _startTimer(); // Restart the timer
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to resend code')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     }
   }
 
@@ -249,9 +318,11 @@ class _VerificationPageState extends State<VerificationPage> {
                       // resend
                       Center(
                         child: TextButton(
-                          onPressed: null, // wire to your resend endpoint if needed
-                          child: const Text('Send code again',
-                              style: TextStyle(color: accent, fontWeight: FontWeight.w600)),
+                          onPressed: _seconds > 0 ? null : _resendCode,
+                          child: Text(
+                            _seconds > 0 ? 'Resend code in $_seconds seconds' : 'Send code again',
+                            style: const TextStyle(color: accent, fontWeight: FontWeight.w600),
+                          ),
                         ),
                       ),
 

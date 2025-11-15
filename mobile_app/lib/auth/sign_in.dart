@@ -1,7 +1,9 @@
-// ignore_for_file: unused_element_parameter
+// ignore_for_file: unused_element_parameter, deprecated_member_use
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'sign_up.dart'; // ← for SignUpForm
+import 'forgot_password.dart';
 import '../home.dart';
 import 'package:crag_tag/services/api.dart';
 
@@ -20,7 +22,7 @@ class _SignInPageState extends State<SignInPage> {
   
   // put near top of your State
   static const double _loginFormHeight = 300;    // was 360
-  static const double _registerFormHeight = 360; // was 420
+  static const double _registerFormHeight = 520; // increased to show all fields
   static const _anim = Duration(milliseconds: 250);
   static const Curve _curve = Curves.easeOutCubic;
 
@@ -29,6 +31,15 @@ class _SignInPageState extends State<SignInPage> {
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  void switchToLogin() {
+    setState(() => _tab = 0);
+    _pageController.animateToPage(
+      0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
@@ -173,69 +184,45 @@ class _SignInPageState extends State<SignInPage> {
                               obscure: _loginObscure,
                               onToggleObscure: () => setState(() => _loginObscure = !_loginObscure),
                             ),
-                            const SignUpForm(),
+                            SignUpForm(
+                              onSwitchToLogin: switchToLogin,
+                            ),
                           ],
                         ),
                       ),
                     ),
 
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 0),
 
-                    // divider
-                    Row(
-                      children: const [
-                        Expanded(child: Divider(thickness: 1)),
-                        Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('Or', style: TextStyle(color: Colors.black))),
-                        Expanded(child: Divider(thickness: 1)),
-                      ],
-                    ),
-                    const SizedBox(height: 35),
-
-                    // social
-                    OutlinedButton.icon(
-                      onPressed: () {},
-                      icon: Image.asset('assets/images/google.png', height: 24, width: 24, fit: BoxFit.contain),
-                      label: const Text('Continue with Google',
-                          style: TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.w500)),
-                      style: _socialStyle(),
-                    ),
-
-                    const SizedBox(height: 28),
-
-                    // footer switch
-                    Builder(
-                      builder: (context) {
-                        final bool isLogin = _tab == 0; // 0 = Login, 1 = Register
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              isLogin ? "Don't have an account? " : "Already have an account? ",
-                              style: const TextStyle(color: Colors.black, fontSize: 15),
-                            ),
-                            GestureDetector(
-                              onTap: () {
-                                final target = isLogin ? 1 : 0;       // go to the other tab
-                                setState(() => _tab = target);
-                                _pageController.animateToPage(
-                                  target,
-                                  duration: const Duration(milliseconds: 300),
-                                  curve: Curves.easeOutCubic,
-                                );
-                              },
-                              child: Text(
-                                isLogin ? 'Sign up' : 'Sign in',       // CTA text switches too
-                                style: const TextStyle(
-                                  color: Color(0xFF178E79),
-                                  fontWeight: FontWeight.w600,
-                                ),
+                    // footer switch - only show for login tab
+                    if (_tab == 0)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            "Don't have an account? ",
+                            style: TextStyle(color: Colors.black, fontSize: 15),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              setState(() => _tab = 1);
+                              _pageController.animateToPage(
+                                1,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeOutCubic,
+                              );
+                            },
+                            child: const Text(
+                              'Sign up',
+                              style: TextStyle(
+                                color: Color(0xFF178E79),
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                          ],
-                        );
-                      },
-                    ),
+                          ),
+                        ],
+                      ),
 
                   ],
                 ),
@@ -263,15 +250,6 @@ class _SignInPageState extends State<SignInPage> {
         borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: Color.fromARGB(255, 62, 116, 108), width: 1.4),
       ),
-    );
-  }
-
-  static ButtonStyle _socialStyle() {
-    return OutlinedButton.styleFrom(
-      foregroundColor: Colors.black87,
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      side: BorderSide(color: Colors.grey.shade300),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     );
   }
 }
@@ -312,12 +290,47 @@ class _LoginFormState extends State<_LoginForm> {
   final TextEditingController _userCtrl = TextEditingController();
   final TextEditingController _passCtrl = TextEditingController();
   bool _submitting = false;
+  bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
 
   @override
   void dispose() {
     _userCtrl.dispose();
     _passCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final sp = await SharedPreferences.getInstance();
+    final savedUsername = sp.getString('saved_username');
+    final savedPassword = sp.getString('saved_password');
+    final rememberMe = sp.getBool('remember_me') ?? false;
+
+    if (rememberMe && savedUsername != null && savedPassword != null) {
+      setState(() {
+        _userCtrl.text = savedUsername;
+        _passCtrl.text = savedPassword;
+        _rememberMe = true;
+      });
+    }
+  }
+
+  Future<void> _saveCredentials(String username, String password) async {
+    final sp = await SharedPreferences.getInstance();
+    if (_rememberMe) {
+      await sp.setString('saved_username', username);
+      await sp.setString('saved_password', password);
+      await sp.setBool('remember_me', true);
+    } else {
+      await sp.remove('saved_username');
+      await sp.remove('saved_password');
+      await sp.setBool('remember_me', false);
+    }
   }
 
   Future<void> _handleLogin() async {
@@ -336,6 +349,9 @@ class _LoginFormState extends State<_LoginForm> {
       final data = resp['data'] as Map;
 
       if (status == 200) {
+        // Save credentials if remember me is checked
+        await _saveCredentials(u, p);
+        
         if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const HomePage()),
@@ -385,10 +401,26 @@ class _LoginFormState extends State<_LoginForm> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(children: [
-              Checkbox(value: true, onChanged: (_) {}, activeColor: const Color(0xFF09554A)),
+              Checkbox(
+                value: _rememberMe,
+                onChanged: (value) {
+                  setState(() {
+                    _rememberMe = value ?? false;
+                  });
+                },
+                activeColor: const Color(0xFF09554A),
+              ),
               const Text('Remember me', style: TextStyle(color: Colors.black, fontSize: 15)),
             ]),
-            TextButton(onPressed: () {}, child: const Text('Forgot password?', style: TextStyle(color: Colors.black, fontSize: 15))),
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ForgotPasswordPage()),
+                );
+              },
+              child: const Text('Forgot password?', style: TextStyle(color: Colors.black, fontSize: 15)),
+            ),
           ],
         ),
         const SizedBox(height: 16),
