@@ -23,6 +23,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
     return (
         <Box
+            suppressHydrationWarning
             sx={{
                 minHeight: '100vh',
                 display: 'flex',
@@ -33,6 +34,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
             {/* Main Content */}
             <Box
+                suppressHydrationWarning
                 sx={{
                     flex: 1,
                     ml: { xs: 0, md: '245px' },
@@ -46,6 +48,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
             {/* Mobile Bottom Navigation */}
             <Paper
+                suppressHydrationWarning
                 sx={{
                     position: 'fixed',
                     bottom: 0,

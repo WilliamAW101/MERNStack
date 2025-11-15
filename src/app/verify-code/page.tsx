@@ -8,7 +8,7 @@ import { styled } from '@mui/material/styles';
 import AppTheme from '../../theme/AppTheme';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/context/toast';
-import VerifyCode from '@/components/VerifyCode';
+import VerifyCode from '@/components/auth/VerifyCode';
 
 const Card = styled(MuiCard)(({ theme }) => ({
     display: 'flex',

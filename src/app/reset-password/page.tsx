@@ -8,7 +8,7 @@ import { styled } from '@mui/material/styles';
 import AppTheme from '../../theme/AppTheme';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/context/toast';
-import ResetPassword from '@/components/ResetPassword';
+import ResetPassword from '@/components/auth/ResetPassword';
 
 const Card = styled(MuiCard)(({ theme }) => ({
     display: 'flex',
@@ -52,18 +52,18 @@ const ResetPasswordContainer = styled(Stack)(({ theme }) => ({
 export default function ResetPasswordPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const email = searchParams.get('email');
+    const id = searchParams.get('id');
     const toast = useToast();
 
     React.useEffect(() => {
         // If no email is provided, redirect to forgot password page
-        if (!email) {
+        if (!id) {
             toast.error("Session expired. Please start over.");
             router.push('/forgot-password');
         }
-    }, [email, router, toast]);
+    }, [id, router, toast]);
 
-    if (!email) {
+    if (!id) {
         return null; // Will redirect in useEffect
     }
 
@@ -72,7 +72,7 @@ export default function ResetPasswordPage() {
             <CssBaseline enableColorScheme />
             <ResetPasswordContainer direction="column" justifyContent="space-between">
                 <Card variant="outlined">
-                    <ResetPassword email={email} />
+                    <ResetPassword id={id} />
                 </Card>
             </ResetPasswordContainer>
         </AppTheme>

@@ -1,3 +1,4 @@
+'use client';
 import * as React from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -19,9 +20,10 @@ export default function ForgotPassword({ onBackToSignIn }: ForgotPasswordProps) 
   const [emailError, setEmailError] = React.useState(false);
   const [emailErrorMessage, setEmailErrorMessage] = React.useState('');
   const toast = useToast();
-  const baseUrl = process.env.REMOTE_URL;
 
   const router = useRouter();
+
+  const baseUrl = 'http://localhost:5000';
 
   const validateEmail = (email: string) => {
     if (!email || !/\S+@\S+\.\S+/.test(email)) {
@@ -46,10 +48,8 @@ export default function ForgotPassword({ onBackToSignIn }: ForgotPasswordProps) 
     setLoading(true);
 
     try {
-      const response = await fetch(`${baseUrl}/api/forgot-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+      const response = await fetch(`${baseUrl}/api/sendCode?email=${email}`, {
+        method: 'GET',
       });
 
       const result = await response.json();

@@ -12,8 +12,9 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
 import MuiCard from '@mui/material/Card';
+import IconButton from '@mui/material/IconButton';
 import { styled } from '@mui/material/styles';
-import AppTheme from '../theme/AppTheme';
+import AppTheme from '@/theme/AppTheme';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/context/user/UserContext';
 import { useToast } from '@/context/toast';
@@ -23,6 +24,9 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import EmailIcon from '@mui/icons-material/Email';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import InputAdornment from '@mui/material/InputAdornment';
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',
@@ -74,6 +78,7 @@ export default function SignUp() {
   const [phoneErrorMessage, setPhoneErrorMessage] = React.useState('');
   const [showVerificationDialog, setShowVerificationDialog] = React.useState(false);
   const [userEmail, setUserEmail] = React.useState('');
+  const [showPassword, setShowPassword] = React.useState(false);
 
   const baseUrl = process.env.REMOTE_URL;
 
@@ -368,13 +373,27 @@ export default function SignUp() {
                   fullWidth
                   name="password"
                   placeholder="••••••"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   id="password"
                   autoComplete="new-password"
                   variant="outlined"
                   error={passwordError}
                   helperText={passwordErrorMessage}
                   color={passwordError ? 'error' : 'primary'}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle password visibility"
+                          onClick={() => setShowPassword(!showPassword)}
+                          onMouseDown={(e) => e.preventDefault()}
+                          edge="end"
+                        >
+                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                 />
               </FormControl>
 

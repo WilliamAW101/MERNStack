@@ -1,5 +1,5 @@
-import SignUp from "@/components/SignUp"
-import Header from "@/components/Header"
+import SignUp from "@/components/auth/SignUp"
+import Header from "@/components/layout/Header"
 import { Box } from "@mui/material"
 
 

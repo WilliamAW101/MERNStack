@@ -4,11 +4,10 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 interface User {
-    first_name: string;
-    last_name: string;
-    username?: string;
-    email?: string;
-    token?: string;
+    id: string;
+    firstName: string;
+    lastName: string;
+    userName: string;
 }
 
 interface UserContextType {

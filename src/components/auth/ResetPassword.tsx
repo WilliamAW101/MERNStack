@@ -5,16 +5,20 @@ import FormLabel from '@mui/material/FormLabel';
 import FormControl from '@mui/material/FormControl';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import EmailIcon from '@mui/icons-material/Email';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { useToast } from '@/context/toast';
 import { useRouter } from 'next/navigation';
 
 interface ResetPasswordProps {
-    email: string;
+    id: string;
 }
 
-export default function ResetPassword({ email }: ResetPasswordProps) {
+export default function ResetPassword({ id }: ResetPasswordProps) {
     const [loading, setLoading] = React.useState(false);
     const [password, setPassword] = React.useState('');
     const [confirmPassword, setConfirmPassword] = React.useState('');
@@ -22,9 +26,11 @@ export default function ResetPassword({ email }: ResetPasswordProps) {
     const [passwordErrorMessage, setPasswordErrorMessage] = React.useState('');
     const [confirmPasswordError, setConfirmPasswordError] = React.useState(false);
     const [confirmPasswordErrorMessage, setConfirmPasswordErrorMessage] = React.useState('');
+    const [showPassword, setShowPassword] = React.useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
     const toast = useToast();
     const router = useRouter();
-    const baseUrl = process.env.REMOTE_URL;
+    const baseUrl = 'http://localhost:5000';
 
     const validatePassword = () => {
         let isValid = true;
@@ -62,10 +68,10 @@ export default function ResetPassword({ email }: ResetPasswordProps) {
         setLoading(true);
 
         try {
-            const response = await fetch(`${baseUrl}/api/reset-password`, {
+            const response = await fetch(`${baseUrl}/api/changePassword`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, newPassword: password }),
+                body: JSON.stringify({ id, newPassword: password, samePassword: password }),
             });
 
             const result = await response.json();
@@ -93,22 +99,6 @@ export default function ResetPassword({ email }: ResetPasswordProps) {
                 </Typography>
             </Box>
 
-            <Box
-                sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    mb: 2,
-                    p: 2,
-                    bgcolor: 'action.hover',
-                    borderRadius: 1
-                }}
-            >
-                <EmailIcon color="primary" />
-                <Typography variant="body2" fontWeight={500}>
-                    {email}
-                </Typography>
-            </Box>
 
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                 Create a new password for your account. Make sure it's at least 6 characters long.
@@ -126,7 +116,7 @@ export default function ResetPassword({ email }: ResetPasswordProps) {
                         error={passwordError}
                         helperText={passwordErrorMessage}
                         id="password"
-                        type="password"
+                        type={showPassword ? 'text' : 'password'}
                         name="password"
                         placeholder="Enter new password"
                         autoFocus
@@ -142,6 +132,20 @@ export default function ResetPassword({ email }: ResetPasswordProps) {
                                 setPasswordErrorMessage('');
                             }
                         }}
+                        InputProps={{
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        aria-label="toggle password visibility"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        edge="end"
+                                    >
+                                        {showPassword ? <Visibility /> : <VisibilityOff />}
+                                    </IconButton>
+                                </InputAdornment>
+                            ),
+                        }}
                     />
                 </FormControl>
 
@@ -151,7 +155,7 @@ export default function ResetPassword({ email }: ResetPasswordProps) {
                         error={confirmPasswordError}
                         helperText={confirmPasswordErrorMessage}
                         id="confirmPassword"
-                        type="password"
+                        type={showConfirmPassword ? 'text' : 'password'}
                         name="confirmPassword"
                         placeholder="Confirm new password"
                         required
@@ -165,6 +169,20 @@ export default function ResetPassword({ email }: ResetPasswordProps) {
                                 setConfirmPasswordError(false);
                                 setConfirmPasswordErrorMessage('');
                             }
+                        }}
+                        InputProps={{
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        aria-label="toggle confirm password visibility"
+                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        edge="end"
+                                    >
+                                        {showConfirmPassword ? <Visibility /> : <VisibilityOff />}
+                                    </IconButton>
+                                </InputAdornment>
+                            ),
                         }}
                     />
                 </FormControl>
@@ -181,9 +199,7 @@ export default function ResetPassword({ email }: ResetPasswordProps) {
                 <Button
                     type="submit"
                     fullWidth
-                    variant="contained"
-                    disabled={loading || !password || !confirmPassword}
-                >
+                    variant="contained"                >
                     {loading ? 'Resetting...' : 'Reset Password'}
                 </Button>
 

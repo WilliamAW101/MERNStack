@@ -23,7 +23,7 @@ export default function VerifyCode({ email, onBack }: VerifyCodeProps) {
     const [codeErrorMessage, setCodeErrorMessage] = React.useState('');
     const toast = useToast();
     const router = useRouter();
-    const baseUrl = process.env.REMOTE_URL;
+    const baseUrl = 'http://localhost:5000';
 
     const validateCode = (code: string) => {
         if (!code || code.length !== 6 || !/^[0-9]+$/.test(code)) {
@@ -46,17 +46,17 @@ export default function VerifyCode({ email, onBack }: VerifyCodeProps) {
         setLoading(true);
 
         try {
-            const response = await fetch(`${baseUrl}/api/verify-reset-code`, {
+            const response = await fetch(`${baseUrl}/api/checkCode`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, code }),
+                body: JSON.stringify({ code }),
             });
 
             const result = await response.json();
 
             if (result.success) {
                 toast.success("Code verified successfully!");
-                router.push(`/reset-password?email=${encodeURIComponent(email)}`);
+                router.push(`/reset-password?id=${result.data.id}`);
             } else {
                 toast.error(result.message || "Invalid verification code");
                 setCodeError(true);

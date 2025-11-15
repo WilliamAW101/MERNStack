@@ -21,9 +21,9 @@ export const dataDisplayCustomizations: Components<Theme> = {
   MuiListItem: {
     styleOverrides: {
       root: ({ theme }) => ({
+        // Removed global icon size restriction to allow custom icon sizes
+        // Individual components can set their own icon sizes
         [`& .${svgIconClasses.root}`]: {
-          width: '1rem',
-          height: '1rem',
           color: (theme.vars || theme).palette.text.secondary,
         },
         [`& .${typographyClasses.root}`]: {

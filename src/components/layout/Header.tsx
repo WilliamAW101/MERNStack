@@ -7,7 +7,7 @@ import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
-import { MountainIcon } from '../asset/icons/CustomIcons';
+import { MountainIcon } from '@/asset/icons/CustomIcons';
 import { useUser } from '@/context/user/UserContext';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import Menu from '@mui/material/Menu';

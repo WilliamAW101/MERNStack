@@ -5,8 +5,6 @@ const nextConfig: NextConfig = {
   env: {
     REMOTE_URL: process.env.REMOTE_URL,
   },
-  output: 'export',
-  trailingSlash: true,
   images: {
     unoptimized: true
   }

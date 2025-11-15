@@ -12,8 +12,12 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
 import MuiCard from '@mui/material/Card';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { styled } from '@mui/material/styles';
-import AppTheme from '../theme/AppTheme';
+import AppTheme from '@/theme/AppTheme';
 import { useUser } from '@/context/user/UserContext';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/context/toast';
@@ -66,12 +70,14 @@ export default function SignIn() {
   const [usernameErrorMessage, setUsernameErrorMessage] = React.useState('');
   const [passwordError, setPasswordError] = React.useState(false);
   const [passwordErrorMessage, setPasswordErrorMessage] = React.useState('');
+  const [showPassword, setShowPassword] = React.useState(false);
   const router = useRouter()
   const toast = useToast();
   const { setUser } = useUser();
 
 
-  const baseUrl = process.env.REMOTE_URL;
+  // const baseUrl = process.env.REMOTE_URL;
+  const baseUrl = 'http://localhost:5000';
 
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -97,14 +103,16 @@ export default function SignIn() {
 
       if (result.success && result.data.token) {
         const token = result.data.token;
-        localStorage.setItem('token', token);
-
+        console.log(result);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('token', token);
+        }
         // Extract user data from the response
         const userData = {
-          token: result.data.token,
           id: result.data.id,
-          first_name: result.data.first_name,
-          last_name: result.data.last_name,
+          firstName: result.data.firstName,
+          lastName: result.data.lastName,
+          userName: result.data.userName
         };
 
         setUser(userData);
@@ -200,13 +208,27 @@ export default function SignIn() {
                 helperText={passwordErrorMessage}
                 name="password"
                 placeholder="••••••"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 id="password"
                 autoComplete="current-password"
                 required
                 fullWidth
                 variant="outlined"
                 color={passwordError ? 'error' : 'primary'}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle password visibility"
+                        onClick={() => setShowPassword(!showPassword)}
+                        onMouseDown={(e) => e.preventDefault()}
+                        edge="end"
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
               />
             </FormControl>
             <Button type="submit" fullWidth variant="contained" onClick={validateInputs}>

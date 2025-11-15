@@ -7,7 +7,7 @@ import MuiCard from '@mui/material/Card';
 import { styled } from '@mui/material/styles';
 import AppTheme from '../../theme/AppTheme';
 import { useRouter } from 'next/navigation';
-import ForgotPassword from '@/components/ForgotPassword';
+import ForgotPassword from '@/components/auth/ForgotPassword';
 
 const Card = styled(MuiCard)(({ theme }) => ({
     display: 'flex',
