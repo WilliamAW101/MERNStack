@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const validator = require('validator');
+const { ObjectId } = require('mongodb');
 
 // import functions
 const { connectToDatabase } = require('../config/database.js');
@@ -290,7 +291,7 @@ router.post('/changePassword', async (req, res) => {
     } else {
       console.log("Password successfully updated!");
     }
-    responseJSON(res, true, ret, 'Password Change Success!', 201);
+    responseJSON(res, true, 'Password has been changed', 'Password Change Success!', 201);
 });
 
 
