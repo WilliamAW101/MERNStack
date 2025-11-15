@@ -54,4 +54,18 @@ const grabPosts = async (res, req, posts, db) => {
     return posts;
 }
 
-module.exports = { grabPosts };
+const getCommentImageURL = async (comments, userCollection) => {
+    for (let comment of comments) {
+        const user = await userCollection.findOne({ userName: comment.userName });
+        let profileImageURL = null;
+        if (user.profilePicture && user.profilePicture.key)
+            profileImageURL = await grabURL(user.profilePicture.key);
+        else
+            profileImageURL = null;
+        comment.userProfilePic = profileImageURL;
+    }
+
+    return comments;
+}
+
+module.exports = { grabPosts, getCommentImageURL };

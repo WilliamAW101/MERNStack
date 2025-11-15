@@ -9,6 +9,12 @@ const { responseJSON } = require('../utils/json.js');
 const {
     refreshToken
 } = require('../utils/authentication.js');
+const {
+    grabURL
+} = require('../utils/aws.js')
+const {
+    getCommentImageURL
+} = require('../utils/posts.js');
 
 router.post('/addPost', authenticateToken, async (req, res) => {
   // Payload in: { caption, difficulty, rating, images?: [{ key, type }], location? }
@@ -249,6 +255,7 @@ router.get('/getPost', authenticateToken, async (req, res) => {
         const postCollection = db.collection('post');
         const commentCollection = db.collection('comment');
         const likesCollection = db.collection('likes');
+        const userCollection = db.collection('user');
 
         // Validate postId format
         let postObjectId;
@@ -265,22 +272,31 @@ router.get('/getPost', authenticateToken, async (req, res) => {
         }
 
         // Fetch comments for the post
-        const comments = await commentCollection
+        let comments = await commentCollection
             .find({ postId: postObjectId })
             .sort({ timestamp: -1 })
-            .toArray();
+            .limit(20).toArray();
+
+        comments = await getCommentImageURL(comments, userCollection);
 
         // Fetch likes for the post
         const likes = await likesCollection
             .find({ post_id: postObjectId })
-            .toArray();
+            .limit(20).toArray();
+
+        
+        const user = await userCollection.findOne({ _id: new ObjectId(post.userId) });
+        if (user.profilePicture && user.profilePicture.key)
+            profileImageURL = await grabURL(user.profilePicture.key);
+        else
+            profileImageURL = null;
+        post.userProfilePic = profileImageURL;
 
         const data = {
             post,
+            profileImageURL,
             comments,
-            likes,
-            commentCount: comments.length,
-            likeCount: likes.length
+            likes
         };
 
         return responseJSON(res, true, data, 'Post retrieved successfully!', 200);
@@ -367,6 +383,14 @@ router.delete('/deleteComment', authenticateToken, async (req, res) => {
 
         const db = await connectToDatabase();
         const commentCollection = db.collection('comment');
+        const postCollection = db.collection('post');
+
+        const comment = await commentCollection.findOne({ _id: new ObjectId(commentID) });
+        // decrement comment count on post
+        await postCollection.updateOne(
+            { _id: comment.postId },
+            { $inc: { commentCount: -1 } }
+        );
 
         const result = await commentCollection.deleteOne({ _id: new ObjectId(commentID) });
         if (result.deletedCount == 0) {
