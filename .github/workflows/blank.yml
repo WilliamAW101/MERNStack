@@ -1,0 +1,57 @@
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: [ Alyssa ]   # change to [main, Alyssa] or to all branches later
+  pull_request:
+    branches: [ Alyssa ]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show repo tree (debug)
+        run: |
+          pwd
+          ls -la
+          echo "----"
+          ls -la MERNSTACK
+          echo "----"
+          ls -la MERNSTACK/cards
+          echo "----"
+          ls -la MERNSTACK/cards/backend
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache-dependency-path: MERNSTACK/cards/backend/package-lock.json
+
+      - name: Install (backend)
+        working-directory: MERNSTACK/cards/backend
+        run: npm ci
+
+      - name: Run tests (backend)
+        working-directory: MERNSTACK/cards/backend
+        env:
+          NODE_ENV: test
+          JWT_SECRET: test-secret
+          SENDGRID_API_KEY: dummy
+          EMAIL_USER: test@example.com
+        run: npm run test:coverage   # uses your cross-env jest script
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: MERNSTACK/cards/backend/coverage
+          if-no-files-found: ignore
