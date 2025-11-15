@@ -1,26 +1,24 @@
-const { decode } = require('jsonwebtoken');
 const { checkExpired } = require('../utils/authentication.js');
+const { responseJSON } = require('../utils/json.js');
 
 const authenticateToken = (req, res, next) => {
-    // Get token from Authorization header
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
-        return res.status(401).json({ error: 'Access token required' });
+        return responseJSON(res, false, { code: 'Unauthorized' }, 'Access token required', 401);
     }
 
-    // Verify token
     const decoded = checkExpired(token);
 
     if (!decoded) {
-        return res.status(403).json({ error: 'Invalid or expired token' });
+        return responseJSON(res, false, { code: 'Unauthorized' }, 'Invalid or expired token', 403);
     }
-    // Attach user info to request object
+
     req.user = {
         id: decoded.id,
         userName: decoded.userName,
-        token: token
+        token
     };
     next();
 };
