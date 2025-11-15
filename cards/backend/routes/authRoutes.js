@@ -210,10 +210,46 @@ router.get('/sendCode', async (req, res) => {
     }
 });
 
+router.post('/checkCode', async (req, res) => {
+    const requiredFields = {
+        code
+    } = req.body;
+
+    // check to see if everything is filled out
+    const missingFields = Object.entries(requiredFields)
+        .filter(([, value]) => value === undefined || value === null || value === '')
+        .map(([key]) => key);
+    if (missingFields.length > 0) {
+        return responseJSON(res, false, { code: 'Bad Request' }, `Missing required field${missingFields.length > 1 ? 's' : ''}: ${missingFields.join(', ')}`, 400);
+    }
+
+    const db = await connectToDatabase();
+    const codeCollection = db.collection('passwordVerify');
+    // match the code
+    const verification = await codeCollection.findOne({ code: requiredFields.code });
+    if (!verification) {
+      return responseJSON(res, false, { code: 'Unauthorized' }, 'Invalid Code', 401); 
+    }
+
+    // delete the password verify document from collection
+    const deleteResult = await codeCollection.deleteOne(
+        { code: requiredFields.code }
+    );
+    if (deleteResult.deletedCount === 0) {
+      console.log('No document found with that ID.');
+    } else {
+      console.log('Document deleted successfully.');
+    }
+    const ret = {
+        id: verification.id,
+    };
+    responseJSON(res, true, ret, 'Code Exists!', 200);
+});
+
 // payload will need a verification code that will be sent via email that the user has verified
 router.post('/changePassword', async (req, res) => {
     const requiredFields = {
-        code,
+        id,
         newPassword,
         samePassword
     } = req.body;
@@ -229,40 +265,34 @@ router.post('/changePassword', async (req, res) => {
     if (requiredFields.newPassword != requiredFields.samePassword)
         return responseJSON(res, false, { code: 'Unauthorized' }, 'Passwords do not match', 401)
 
-    const db = await connectToDatabase();
-    const codeCollection = db.collection('passwordVerify');
-    // match the code
-    const verification = await codeCollection.findOne({ code: requiredFields.code });
-    if (!verification) {
-      return responseJSON(res, false, { code: 'Unauthorized' }, 'Invalid Code', 401); 
-    }
-
     // change the password
+    const db = await connectToDatabase();
     const userCollection = db.collection('user');
     const hashedPassword = await hashPass(requiredFields.newPassword);
 
-
+    const userId = new ObjectId(requiredFields.id);
     // replace the old password with new
     const result = await userCollection.updateOne(
-        {_id: verification.id},
+        {_id: userId},
         { $set: {password: hashedPassword} }
     );
-
-    // delete the password verify document from collection
-    const deleteResult = await codeCollection.deleteOne(
-        { code: requiredFields.code }
-    );
-    if (result.deletedCount === 0) {
-      console.log('No document found with that ID.');
-    } else {
-      console.log('Document deleted successfully.');
-    }
 
     const ret = {
       id: result.insertedId,
     };
+
+    if (result.matchedCount === 0) {
+      responseJSON(res, false, ret, 'No user found with that ID.', 400);
+      return;
+    } else if (result.modifiedCount === 0) {
+      responseJSON(res, false, ret, 'Password was not updated (maybe same as old one).', 401);
+      return;
+    } else {
+      console.log("Password successfully updated!");
+    }
     responseJSON(res, true, ret, 'Password Change Success!', 201);
 });
+
 
 // Front end does not need to know this crap exists, just that it works
 router.get('/verifyEmail', async (req, res) => {
