@@ -23,7 +23,7 @@ router.post('/addPost', authenticateToken, async (req, res) => {
     const { caption, difficulty, rating, images, location } = req.body;
 
     // auth
-    const userId = req.user.id;
+    const userId = new ObjectId(req.user.id);
 
     // basic validation
     if (!caption) return res.status(400).json({ error: 'Caption is required' });
@@ -313,7 +313,7 @@ router.post('/addComment', authenticateToken, async (req, res) => {
         const { postId, commentText } = req.body;
 
         // Get userId from authenticated token
-        const userId = req.user.id;
+        const userId = new ObjectId(req.user.id);
         const userName = req.user.userName;
 
         // Validate required fields
@@ -329,7 +329,6 @@ router.post('/addComment', authenticateToken, async (req, res) => {
         const commentCollection = db.collection('comment');
 
         // Check if post exists
-        const { ObjectId } = require('mongodb');
         let postObjectId;
 
         try {
@@ -370,7 +369,7 @@ router.post('/addComment', authenticateToken, async (req, res) => {
 
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 
-        return responseJSON(res, true, data, { refreshedToken },  'Comment added successfully!', 201);
+        return responseJSON(res, true, { data,  refreshedToken },  'Comment added successfully!', 201);
     } catch (e) {
         console.error('Add comment error:', e);
         return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to add comment', 500);
