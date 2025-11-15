@@ -14,9 +14,9 @@ const grabPosts = async (res, req, posts, db) => {
         const newUserID = new ObjectId(post.userId); //don't care, it works
         const user = await userCollection.findOne({ _id: newUserID });
         post.username = user.userName;
-        const comments = await commentsCollection.find({ postId: post._id }).sort({ timestamp: -1 }).limit(3).toArray();
-        post.comments = comments; // attach the first 3 comments to the post object
+        const comments = await commentsCollection.find({ postId: post._id }).sort({ timestamp: -1 }).limit(20).toArray();
         
+        post.comments = await getCommentImageURL(comments, userCollection);
         
         // convert key to aws url
         post.imageURLs = null;
@@ -54,4 +54,18 @@ const grabPosts = async (res, req, posts, db) => {
     return posts;
 }
 
-module.exports = { grabPosts };
+const getCommentImageURL = async (comments, userCollection) => {
+    for (let comment of comments) {
+        const user = await userCollection.findOne({ userName: comment.userName });
+        let profileImageURL = null;
+        if (user.profilePicture && user.profilePicture.key)
+            profileImageURL = await grabURL(user.profilePicture.key);
+        else
+            profileImageURL = null;
+        comment.userProfilePic = profileImageURL;
+    }
+
+    return comments;
+}
+
+module.exports = { grabPosts, getCommentImageURL };

@@ -9,6 +9,12 @@ const { responseJSON } = require('../utils/json.js');
 const {
     refreshToken
 } = require('../utils/authentication.js');
+const {
+    grabURL
+} = require('../utils/aws.js')
+const {
+    getCommentImageURL
+} = require('../utils/posts.js');
 
 router.post('/addPost', authenticateToken, async (req, res) => {
   // Payload in: { caption, difficulty, rating, images?: [{ key, type }], location? }
@@ -17,7 +23,7 @@ router.post('/addPost', authenticateToken, async (req, res) => {
     const { caption, difficulty, rating, images, location } = req.body;
 
     // auth
-    const userId = req.user.id;
+    const userId = new ObjectId(req.user.id);
 
     // basic validation
     if (!caption) return res.status(400).json({ error: 'Caption is required' });
@@ -249,6 +255,7 @@ router.get('/getPost', authenticateToken, async (req, res) => {
         const postCollection = db.collection('post');
         const commentCollection = db.collection('comment');
         const likesCollection = db.collection('likes');
+        const userCollection = db.collection('user');
 
         // Validate postId format
         let postObjectId;
@@ -265,22 +272,31 @@ router.get('/getPost', authenticateToken, async (req, res) => {
         }
 
         // Fetch comments for the post
-        const comments = await commentCollection
+        let comments = await commentCollection
             .find({ postId: postObjectId })
             .sort({ timestamp: -1 })
-            .toArray();
+            .limit(20).toArray();
+
+        comments = await getCommentImageURL(comments, userCollection);
 
         // Fetch likes for the post
         const likes = await likesCollection
             .find({ post_id: postObjectId })
-            .toArray();
+            .limit(20).toArray();
+
+        
+        const user = await userCollection.findOne({ _id: new ObjectId(post.userId) });
+        if (user.profilePicture && user.profilePicture.key)
+            profileImageURL = await grabURL(user.profilePicture.key);
+        else
+            profileImageURL = null;
+        post.userProfilePic = profileImageURL;
 
         const data = {
             post,
+            profileImageURL,
             comments,
-            likes,
-            commentCount: comments.length,
-            likeCount: likes.length
+            likes
         };
 
         return responseJSON(res, true, data, 'Post retrieved successfully!', 200);
@@ -297,7 +313,7 @@ router.post('/addComment', authenticateToken, async (req, res) => {
         const { postId, commentText } = req.body;
 
         // Get userId from authenticated token
-        const userId = req.user.id;
+        const userId = new ObjectId(req.user.id);
         const userName = req.user.userName;
 
         // Validate required fields
@@ -313,7 +329,6 @@ router.post('/addComment', authenticateToken, async (req, res) => {
         const commentCollection = db.collection('comment');
 
         // Check if post exists
-        const { ObjectId } = require('mongodb');
         let postObjectId;
 
         try {
@@ -354,7 +369,7 @@ router.post('/addComment', authenticateToken, async (req, res) => {
 
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 
-        return responseJSON(res, true, data, { refreshedToken },  'Comment added successfully!', 201);
+        return responseJSON(res, true, { data,  refreshedToken },  'Comment added successfully!', 201);
     } catch (e) {
         console.error('Add comment error:', e);
         return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to add comment', 500);
@@ -367,6 +382,14 @@ router.delete('/deleteComment', authenticateToken, async (req, res) => {
 
         const db = await connectToDatabase();
         const commentCollection = db.collection('comment');
+        const postCollection = db.collection('post');
+
+        const comment = await commentCollection.findOne({ _id: new ObjectId(commentID) });
+        // decrement comment count on post
+        await postCollection.updateOne(
+            { _id: comment.postId },
+            { $inc: { commentCount: -1 } }
+        );
 
         const result = await commentCollection.deleteOne({ _id: new ObjectId(commentID) });
         if (result.deletedCount == 0) {
