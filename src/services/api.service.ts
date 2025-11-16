@@ -403,3 +403,61 @@ export async function uploadProfilePictureKey(key: string): Promise<{
     return response;
 }
 
+/**
+ * Fetch notifications for current user
+ */
+export async function grabNotifications(lastTimestamp?: string): Promise<{
+    personalNotifications: any[];
+    nextCursor: string | null;
+}> {
+    const params = new URLSearchParams();
+    if (lastTimestamp) {
+        params.append('lastTimestamp', lastTimestamp);
+    }
+
+    const queryString = params.toString();
+    const endpoint = `/api/grabNotifications${queryString ? `?${queryString}` : ''}`;
+
+    const response = await fetchAPI<any>(endpoint);
+
+    return {
+        personalNotifications: response.data.personalNotifications || [],
+        nextCursor: response.data.nextCursor || null,
+    };
+}
+
+/**
+ * Mark a notification as read
+ */
+export async function markNotificationAsRead(notifID: string): Promise<{
+    success: boolean;
+    message: string;
+}> {
+    const response = await fetchAPI<any>('/api/markRead', {
+        method: 'POST',
+        body: JSON.stringify({ notifID }),
+    });
+
+    return {
+        success: response.success,
+        message: response.message,
+    };
+}
+
+/**
+ * Mark all notifications as seen (for badge count)
+ */
+export async function markAllNotificationsAsSeen(): Promise<{
+    success: boolean;
+    message: string;
+}> {
+    const response = await fetchAPI<any>('/api/markAllSeen', {
+        method: 'POST',
+    });
+
+    return {
+        success: response.success,
+        message: response.message,
+    };
+}
+

@@ -12,7 +12,6 @@ import {
     CircularProgress,
     Fab,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import Post from './Post';
 import AppLayout from '../layout/AppLayout';
