@@ -11,14 +11,16 @@ import {
     ListItemText,
     Avatar,
 } from '@mui/material';
-import HomeIcon from '@mui/icons-material/Home';
-import SearchIcon from '@mui/icons-material/Search';
+// Hiking-themed icons (revert to: Home, Search, Notifications, AddCircle if needed)
+import TerrainIcon from '@mui/icons-material/Terrain';
+import HikingIcon from '@mui/icons-material/Hiking';
 import NotificationsIcon from '@mui/icons-material/Notifications';
-import AddCircleIcon from '@mui/icons-material/AddCircle';
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { useRouter, usePathname } from 'next/navigation';
 import CreatePostModal from '../post/CreatePostModal';
+import SignatureLogo from '../common/SignatureLogo';
 
 export default function Sidebar() {
     const router = useRouter();
@@ -42,10 +44,10 @@ export default function Sidebar() {
     }, []);
 
     const navigationItems = [
-        { text: 'Home', icon: <HomeIcon />, path: '/', action: 'navigate' },
-        { text: 'Search', icon: <SearchIcon />, path: '/search', action: 'navigate' },
+        { text: 'Discover', icon: <TerrainIcon />, path: '/', action: 'navigate' },
+        { text: 'Find Hikers', icon: <HikingIcon />, path: '/search', action: 'navigate' },
         { text: 'Notifications', icon: <NotificationsIcon />, path: '/notifications', action: 'navigate' },
-        { text: 'Create', icon: <AddCircleIcon />, path: '/create', action: 'modal' },
+        { text: 'Log My Hike', icon: <CameraAltIcon />, path: '/create', action: 'modal' },
         { text: 'Profile', icon: <AccountCircleIcon />, path: `/${userName}`, action: 'navigate' },
     ];
 
@@ -80,29 +82,16 @@ export default function Sidebar() {
                     position: 'fixed',
                     height: '100vh',
                     borderRight: '1px solid #dbdbdb',
-                    bgcolor: '#fff',
+                    bgcolor: '#E9EDE8',
                     pt: 4,
                     pb: 3,
                     px: 2,
                     zIndex: 1000,
                 }}
             >
-                {/* Logo */}
+                {/* Logo - Hiking Theme */}
                 <Box sx={{ px: 2, mb: 3 }}>
-                    <Typography
-                        variant="h5"
-                        sx={{
-                            fontFamily: 'cursive',
-                            fontWeight: 700,
-                            color: '#000',
-                            fontSize: { md: '1.5rem', lg: '1.65rem' },
-                            cursor: 'pointer',
-                            letterSpacing: '-0.5px',
-                        }}
-                        onClick={() => router.push('/')}
-                    >
-                        CragTag
-                    </Typography>
+                    <SignatureLogo size="medium" color="#000" />
                 </Box>
 
                 {/* Navigation List */}
@@ -128,7 +117,7 @@ export default function Sidebar() {
                                     <ListItemIcon
                                         sx={{
                                             minWidth: 40,
-                                            color: 'black',
+                                            color: isActive ? '#2e7d32' : '#424242', // Green when active, dark gray otherwise
                                         }}
                                     >
                                         <Box
@@ -150,7 +139,7 @@ export default function Sidebar() {
                                         primaryTypographyProps={{
                                             fontSize: { md: '1rem', lg: '1.05rem' },
                                             fontWeight: isActive ? 600 : 400,
-                                            color: 'black',
+                                            color: isActive ? '#2e7d32' : '#424242', // Green when active
                                         }}
                                     />
                                 </ListItemButton>

@@ -13,7 +13,7 @@ import {
 } from '@/types/upload.types';
 import { Comment } from '@/types/comment.types';
 
-const BASE_URL = 'http://localhost:5000';
+const BASE_URL = process.env.REMOTE_URL;
 
 /**
  * Generic fetch wrapper with error handling
@@ -83,57 +83,7 @@ export async function fetchPostById(postId: string): Promise<Post> {
     }
     );
 
-    // Backend returns { data: { post: {...}, comments: [...], likes: [...] } }
-    // Transform to match Post interface
-    const { post, comments, likes } = response.data;
-
-    // Generate presigned URLs for all images
-    let imageURLs: string[] = [];
-    if (post.images && post.images.length > 0) {
-        try {
-            // Fetch presigned URLs for all images in parallel
-            const urlPromises = post.images.map((img: any) =>
-                getDownloadUrl({ key: img.key })
-            );
-            const urlResponses = await Promise.all(urlPromises);
-            imageURLs = urlResponses.map(res => res.url);
-        } catch (error) {
-            console.error('Error fetching image URLs:', error);
-            // Fallback to empty array if fetching fails
-            imageURLs = [];
-        }
-    }
-
-    // Check if current user liked the post
-    const currentUserId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
-    const isLiked = likes?.some((like: any) => like.user_id === currentUserId) || false;
-
-    // Get username from comments if available, otherwise try to extract from first comment
-    let username = 'Unknown';
-    if (comments && comments.length > 0) {
-        // Try to find a comment from the post owner
-        const ownerComment = comments.find((c: any) => c.userId === post.userId);
-        username = ownerComment?.userName || comments[0]?.userName || 'Unknown';
-    }
-
-    return {
-        _id: post._id,
-        userId: post.userId,
-        caption: post.caption,
-        difficulty: post.difficulty,
-        rating: post.rating,
-        images: post.images,
-        imageURLs: imageURLs,
-        location: post.location,
-        timestamp: post.timestamp,
-        likeCount: post.likeCount,
-        likes: likes?.map((like: any) => like.user_id) || [],
-        commentCount: post.commentCount,
-        comments: comments || [],
-        isLiked: isLiked,
-        username: username,
-        userProfilePic: post.userProfilePic || response.data.profileImageURL,
-    };
+    return response.data
 }
 
 /**
@@ -147,22 +97,7 @@ export async function getUploadUrl(request: GetUploadUrlRequest): Promise<GetUpl
     });
 }
 
-/**
- * Upload file to S3 using presigned URL
- */
-export async function uploadFileToS3(uploadUrl: string, file: File): Promise<void> {
-    const response = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: file,
-        headers: {
-            'Content-Type': file.type,
-        },
-    });
 
-    if (!response.ok) {
-        throw new Error('Failed to upload file to S3');
-    }
-}
 
 /**
  * Get presigned download URL for S3

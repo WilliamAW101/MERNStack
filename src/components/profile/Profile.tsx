@@ -48,8 +48,7 @@ interface UserInfo {
     userProfilePic: string | null;
 }
 
-// Note: ProfilePost is now the full Post type from fetchProfilePosts
-// which includes all fields needed for CommentModal
+
 
 export default function Profile({ userName }: { userName: string }) {
     const [tabValue, setTabValue] = useState(0);
@@ -262,6 +261,11 @@ export default function Profile({ userName }: { userName: string }) {
     const handlePostClick = async (post: Post) => {
         try {
             const fullPost = await fetchPostById(post._id);
+            console.log('fullPost', fullPost);
+            // const isLiked = post.likes.includes(user.id);
+            // const likeCount = post.likeCount;
+            // fullPost.isLiked = isLiked;
+            // fullPost.likeCount = post.likeCount;
             setSelectedPost(fullPost);
             setCommentModalOpen(true);
         } catch (error) {
@@ -291,7 +295,7 @@ export default function Profile({ userName }: { userName: string }) {
 
         // Update the post in the grid immediately
         setPosts(prev => prev.map(p =>
-            p._id === selectedPost._id ? updatedPost : p
+            p._id === selectedPost._id ? { ...p, isLiked: updatedPost.isLiked, likeCount: updatedPost.likeCount } : p
         ));
 
         try {
@@ -305,7 +309,7 @@ export default function Profile({ userName }: { userName: string }) {
                 };
                 setSelectedPost(finalPost);
                 setPosts(prev => prev.map(p =>
-                    p._id === selectedPost._id ? finalPost : p
+                    p._id === selectedPost._id ? { ...p, isLiked: response.isLiked, likeCount: response.likeCount } : p
                 ));
             }
         } catch (error) {
@@ -364,7 +368,7 @@ export default function Profile({ userName }: { userName: string }) {
                         sx={{
                             py: { xs: 2, md: 4 },
                             px: { xs: 2, md: 3 },
-                            bgcolor: '#fff',
+                            bgcolor: '#E9EDE8',
                         }}
                     >
                         <Box sx={{ display: 'flex', gap: { xs: 3, md: 6 }, alignItems: 'flex-start' }}>
@@ -512,7 +516,7 @@ export default function Profile({ userName }: { userName: string }) {
                     {/* Tabs */}
                     <Box
                         sx={{
-                            bgcolor: '#fff',
+                            bgcolor: '#E9EDE8',
                             borderBottom: '1px solid #dbdbdb',
                         }}
                     >
@@ -558,7 +562,7 @@ export default function Profile({ userName }: { userName: string }) {
                     </Box>
 
                     {/* Posts Grid */}
-                    <Box sx={{ mt: 0, bgcolor: '#fff', minHeight: '400px', pb: 4 }}>
+                    <Box sx={{ mt: 0, bgcolor: '#E9EDE8', minHeight: '400px', pb: 4 }}>
                         {posts.length === 0 ? (
                             // Empty State
                             <Box

@@ -23,7 +23,8 @@ export default function VerifyCode({ email, onBack }: VerifyCodeProps) {
     const [codeErrorMessage, setCodeErrorMessage] = React.useState('');
     const toast = useToast();
     const router = useRouter();
-    const baseUrl = 'http://localhost:5000';
+    const baseUrl = process.env.REMOTE_URL;
+
 
     const validateCode = (code: string) => {
         if (!code || code.length !== 6 || !/^[0-9]+$/.test(code)) {
@@ -72,10 +73,9 @@ export default function VerifyCode({ email, onBack }: VerifyCodeProps) {
 
     const handleResendCode = async () => {
         try {
-            const response = await fetch(`${baseUrl}/api/forgot-password`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email }),
+
+            const response = await fetch(`${baseUrl}/api/sendCode?email=${email}`, {
+                method: 'GET',
             });
 
             const result = await response.json();
@@ -156,11 +156,6 @@ export default function VerifyCode({ email, onBack }: VerifyCodeProps) {
                                 setCodeErrorMessage('');
                             }
                         }}
-                        inputProps={{
-                            maxLength: 6,
-                            pattern: '[0-9]*',
-                            inputMode: 'numeric',
-                        }}
                     />
                 </FormControl>
 
@@ -168,7 +163,6 @@ export default function VerifyCode({ email, onBack }: VerifyCodeProps) {
                     type="submit"
                     fullWidth
                     variant="contained"
-                    disabled={loading || code.length !== 6}
                 >
                     {loading ? 'Verifying...' : 'Verify Code'}
                 </Button>
@@ -179,6 +173,19 @@ export default function VerifyCode({ email, onBack }: VerifyCodeProps) {
                     variant="text"
                     onClick={handleResendCode}
                     disabled={loading}
+                    sx={{
+                        bgcolor: '#0095f6',
+                        color: '#fff',
+                        textTransform: 'none',
+                        fontWeight: 500,
+                        '&:hover': {
+                            bgcolor: '#0084e0',
+                        },
+                        '&.Mui-disabled': {
+                            bgcolor: '#b3d8f5',
+                            color: '#fff',
+                        },
+                    }}
                 >
                     Resend Code
                 </Button>
@@ -188,6 +195,14 @@ export default function VerifyCode({ email, onBack }: VerifyCodeProps) {
                     fullWidth
                     variant="text"
                     onClick={onBack}
+                    sx={{
+                        bgcolor: '#ffb300',
+                        color: '#000',
+                        fontWeight: 500,
+                        '&:hover': {
+                            bgcolor: '#ffb300',
+                        },
+                    }}
                 >
                     Use Different Email
                 </Button>

@@ -28,7 +28,7 @@ export interface Post {
     location: string | null;
     timestamp: string;
     likeCount?: number;
-    likes?: string[]; // Array of user IDs who liked the post
+    likes: string[]; // Array of user IDs who liked the post
     commentCount?: number;
     comments?: PostComment[];
     isLiked?: boolean;

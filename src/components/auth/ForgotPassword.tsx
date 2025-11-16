@@ -10,6 +10,7 @@ import IconButton from '@mui/material/IconButton';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useToast } from '@/context/toast';
 import { useRouter } from 'next/navigation';
+import SignatureLogo from '../common/SignatureLogo';
 
 interface ForgotPasswordProps {
   onBackToSignIn?: () => void;
@@ -23,7 +24,7 @@ export default function ForgotPassword({ onBackToSignIn }: ForgotPasswordProps) 
 
   const router = useRouter();
 
-  const baseUrl = 'http://localhost:5000';
+  const baseUrl = process.env.REMOTE_URL;
 
   const validateEmail = (email: string) => {
     if (!email || !/\S+@\S+\.\S+/.test(email)) {

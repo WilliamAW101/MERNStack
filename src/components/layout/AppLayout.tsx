@@ -41,6 +41,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     pt: { xs: 8, md: 4 },
                     pb: { xs: 10, md: 4 },
                     minHeight: '100vh',
+                    bgcolor: '#E9EDE8',
                 }}
             >
                 {children}

@@ -21,6 +21,7 @@ import AppTheme from '@/theme/AppTheme';
 import { useUser } from '@/context/user/UserContext';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/context/toast';
+import SignatureLogo from '../common/SignatureLogo';
 
 
 const Card = styled(MuiCard)(({ theme }) => ({
@@ -50,7 +51,7 @@ const SignInContainer = styled(Stack)(({ theme }) => ({
   height: 'calc((1 - var(--template-frame-height, 0)) * 100dvh)',
   minHeight: '100vh',
   padding: theme.spacing(1),
-  background: 'linear-gradient(135deg, #FBEED7 0%, #E8D4B8 50%, #C9AE8E 100%)',
+  background: '#E9EDE8',
   [theme.breakpoints.up('sm')]: {
     padding: theme.spacing(2),
   },
@@ -61,7 +62,7 @@ const SignInContainer = styled(Stack)(({ theme }) => ({
     padding: theme.spacing(6),
   },
   ...theme.applyStyles('dark', {
-    background: 'linear-gradient(135deg, #FBEED7 0%, #E8D4B8 50%, #C9AE8E 100%)',
+    background: '#E9EDE8',
   }),
 }));
 
@@ -76,8 +77,7 @@ export default function SignIn() {
   const { setUser } = useUser();
 
 
-  // const baseUrl = process.env.REMOTE_URL;
-  const baseUrl = 'http://localhost:5000';
+  const baseUrl = process.env.REMOTE_URL;
 
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -167,6 +167,9 @@ export default function SignIn() {
       <SignInContainer direction="column" justifyContent="space-between">
         {/* <ColorModeSelect sx={{ position: 'fixed', top: '1rem', right: '1rem' }} /> */}
         <Card variant="outlined">
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
+            <SignatureLogo size="small" color="black" />
+          </Box>
           <Typography
             component="h1"
             variant="h4"
@@ -223,6 +226,12 @@ export default function SignIn() {
                         onClick={() => setShowPassword(!showPassword)}
                         onMouseDown={(e) => e.preventDefault()}
                         edge="end"
+                        sx={{
+                          padding: 0,
+                          '&:hover': {
+                            backgroundColor: 'transparent',
+                          },
+                        }}
                       >
                         {showPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>

@@ -7,17 +7,16 @@ import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
-import { MountainIcon } from '@/asset/icons/CustomIcons';
 import { useUser } from '@/context/user/UserContext';
+import SignatureLogo from '../common/SignatureLogo';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonIcon from '@mui/icons-material/Person';
-import { Typography, Divider } from '@mui/material';
+import { Divider } from '@mui/material';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 
 const StyledToolbar = styled(Toolbar)(({ theme }) => ({
   display: 'flex',
@@ -82,40 +81,20 @@ export default function Header() {
         }}
       >
         <StyledToolbar variant="dense" disableGutters sx={{ px: { xs: 1, sm: 2 } }}>
-          <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', px: 0, gap: 0.5 }}>
-            <IconButton
-              onClick={() => router.push('/')}
+          <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', px: 0 }}>
+            <Box
               sx={{
-                backgroundColor: 'transparent',
-                borderRadius: 'none',
-                border: 'none',
-                color: 'inherit',
-                '&:focus': {
-                  outline: 'none',
-                  border: 'none',
+                '& > div': {
+                  filter: 'drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.7))',
                 },
-                '&:active': {
-                  outline: 'none',
-                  border: 'none',
+                '& Typography': {
+                  color: 'white',
+                  textShadow: '2px 2px 4px rgba(0, 0, 0, 0.7)',
                 },
               }}
             >
-              <MountainIcon />
-            </IconButton>
-            <Link href="/">
-              <Typography
-                variant="h6"
-                sx={{
-                  color: 'white',
-                  fontWeight: 700,
-                  fontSize: { xs: '1rem', sm: '1.25rem', md: '1.5rem' },
-                  lineHeight: 1,
-                  textShadow: '1px 1px 2px rgba(0, 0, 0, 0.5)',
-                }}
-              >
-                CragTag
-              </Typography>
-            </Link>
+              <SignatureLogo size="small" color="black" />
+            </Box>
           </Box>
           <Box
             sx={{

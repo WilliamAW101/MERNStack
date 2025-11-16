@@ -26,7 +26,6 @@ import {
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
-import ShareIcon from '@mui/icons-material/Share';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import StarIcon from '@mui/icons-material/Star';
@@ -248,7 +247,7 @@ export default function Post({ post, onPostUpdated, onPostDeleted }: PostCompone
         <Card
             sx={{
                 maxWidth: '100%',
-                bgcolor: '#fff',
+                bgcolor: '#E9EDE8',
                 borderRadius: 0,
                 boxShadow: 'none',
                 border: 'none',

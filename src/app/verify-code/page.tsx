@@ -37,7 +37,7 @@ const VerifyCodeContainer = styled(Stack)(({ theme }) => ({
     height: 'calc((1 - var(--template-frame-height, 0)) * 100dvh)',
     minHeight: '100vh',
     padding: theme.spacing(1),
-    background: 'linear-gradient(135deg, #FBEED7 0%, #E8D4B8 50%, #C9AE8E 100%)',
+    background: '#E9EDE8',
     [theme.breakpoints.up('sm')]: {
         padding: theme.spacing(2),
     },
@@ -45,7 +45,7 @@ const VerifyCodeContainer = styled(Stack)(({ theme }) => ({
         padding: theme.spacing(4),
     },
     ...theme.applyStyles('dark', {
-        background: 'linear-gradient(135deg, #FBEED7 0%, #E8D4B8 50%, #C9AE8E 100%)',
+        background: '#E9EDE8',
     }),
 }));
 

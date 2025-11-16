@@ -21,12 +21,12 @@ import { useToast } from '@/context/toast';
 import { fetchHomePosts } from '@/services/api.service';
 import { Post as PostType } from '@/types/post.types';
 
-// Mock data for suggested users
-const suggestedUsers = [
-    { name: 'Alex Mountain', handle: '@alexm', avatar: null },
-    { name: 'Emma Trail', handle: '@emmat', avatar: null },
-    { name: 'Chris Peak', handle: '@chrispeak', avatar: null },
-    { name: 'Lisa Summit', handle: '@lisas', avatar: null },
+// Mock data for suggested hiking buddies
+const suggestedHikingBuddies = [
+    { name: 'Alex Mountain', handle: '@alexm', avatar: null, bio: 'Summit chaser' },
+    { name: 'Emma Trail', handle: '@emmat', avatar: null, bio: 'Trail explorer' },
+    { name: 'Chris Peak', handle: '@chrispeak', avatar: null, bio: 'Rock climber' },
+    { name: 'Lisa Summit', handle: '@lisas', avatar: null, bio: 'Adventure seeker' },
 ];
 
 export default function Feed() {
@@ -187,7 +187,7 @@ export default function Feed() {
                                     No posts yet
                                 </Typography>
                                 <Typography variant="body2" sx={{ color: '#8e8e8e' }}>
-                                    Follow other climbers to see their posts here
+                                    Connect with hikers to see their adventures here
                                 </Typography>
                             </Box>
                         ) : (
@@ -240,10 +240,10 @@ export default function Feed() {
                                         fontSize: '0.875rem',
                                     }}
                                 >
-                                    Suggested for you
+                                    Hiking Buddies for You
                                 </Typography>
                                 <Stack spacing={2}>
-                                    {suggestedUsers.map((user, index) => (
+                                    {suggestedHikingBuddies.map((user, index) => (
                                         <Box
                                             key={index}
                                             sx={{
@@ -282,7 +282,7 @@ export default function Feed() {
                                                         variant="caption"
                                                         sx={{ color: '#8e8e8e', fontSize: '0.75rem' }}
                                                     >
-                                                        Suggested for you
+                                                        {user.bio}
                                                     </Typography>
                                                 </Box>
                                             </Box>
@@ -292,16 +292,16 @@ export default function Feed() {
                                                     textTransform: 'none',
                                                     fontSize: '0.75rem',
                                                     fontWeight: 600,
-                                                    color: '#0095f6',
+                                                    color: '#2e7d32',
                                                     minWidth: 'auto',
                                                     px: 0,
                                                     '&:hover': {
                                                         bgcolor: 'transparent',
-                                                        color: '#00376b',
+                                                        color: '#1b5e20',
                                                     },
                                                 }}
                                             >
-                                                Follow
+                                                Connect
                                             </Button>
                                         </Box>
                                     ))}

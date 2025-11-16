@@ -21,6 +21,7 @@ import {
     changeProfileInfo,
     getUploadUrl,
 } from '@/services/api.service';
+import SignatureLogo from '../common/SignatureLogo';
 
 interface UserInfo {
     _id: string;
@@ -168,8 +169,14 @@ export default function EditProfileModal({
                     borderBottom: '1px solid #dbdbdb',
                     py: 2,
                     color: '#000',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1,
                 }}
             >
+                <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+                    <SignatureLogo size="small" color="#000" />
+                </Box>
                 Edit Profile
             </DialogTitle>
             <DialogContent sx={{ pt: 3 }}>

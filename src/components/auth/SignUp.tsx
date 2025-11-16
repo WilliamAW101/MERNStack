@@ -27,6 +27,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import InputAdornment from '@mui/material/InputAdornment';
+import SignatureLogo from '../common/SignatureLogo';
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',
@@ -40,6 +41,10 @@ const Card = styled(MuiCard)(({ theme }) => ({
     'hsla(220, 30%, 5%, 0.05) 0px 5px 15px 0px, hsla(220, 25%, 10%, 0.05) 0px 15px 35px -5px',
   [theme.breakpoints.up('sm')]: {
     width: '450px',
+    maxWidth: '90vw',
+  },
+  [theme.breakpoints.up('md')]: {
+    width: '500px',
   },
   ...theme.applyStyles('dark', {
     boxShadow:
@@ -51,7 +56,7 @@ const SignUpContainer = styled(Stack)(({ theme }) => ({
   height: 'calc((1 - var(--template-frame-height, 0)) * 100dvh)',
   minHeight: '100%',
   padding: theme.spacing(2),
-  background: 'linear-gradient(135deg, #FBEED7 0%, #E8D4B8 50%, #C9AE8E 100%)',
+  background: '#E9EDE8',
   [theme.breakpoints.up('sm')]: {
     padding: theme.spacing(2),
   },
@@ -59,7 +64,7 @@ const SignUpContainer = styled(Stack)(({ theme }) => ({
     padding: theme.spacing(4),
   },
   ...theme.applyStyles('dark', {
-    background: 'linear-gradient(135deg, #FBEED7 0%, #E8D4B8 50%, #C9AE8E 100%)',
+    background: '#E9EDE8',
   }),
 }));
 
@@ -85,7 +90,6 @@ export default function SignUp() {
 
   const toast = useToast();
   const router = useRouter()
-  const { setUser } = useUser();
 
 
   const validateInputs = () => {
@@ -214,7 +218,7 @@ export default function SignUp() {
       <CssBaseline enableColorScheme />
       <SignUpContainer>
 
-        <Card>
+        <Card sx={{ backgroundColor: 'white' }}>
 
           <Dialog
             open={showVerificationDialog}
@@ -222,7 +226,7 @@ export default function SignUp() {
             maxWidth="sm"
             fullWidth
           >
-            <DialogTitle sx={{ textAlign: 'center', pt: 4 }}>
+            <DialogTitle sx={{ textAlign: 'center', pt: 3 }}>
               <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
                 <CheckCircleOutlineIcon sx={{ fontSize: 60, color: 'success.main' }} />
               </Box>
@@ -276,7 +280,10 @@ export default function SignUp() {
             </DialogActions>
           </Dialog>
 
-          <Box sx={{ p: 3, maxHeight: '80vh', overflow: 'auto' }}>
+          <Box sx={{ p: 2, maxHeight: '100vh', overflow: 'auto', backgroundColor: 'white' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
+              <SignatureLogo size="small" color="#000" />
+            </Box>
             <Typography
               component="h1"
               variant="h4"
@@ -284,7 +291,7 @@ export default function SignUp() {
                 width: '100%',
                 fontSize: { xs: '1.5rem', sm: '2rem', md: '2.15rem' },
                 textAlign: 'center',
-                mb: 3
+                mb: 2
               }}
             >
               Sign up
@@ -388,8 +395,14 @@ export default function SignUp() {
                           onClick={() => setShowPassword(!showPassword)}
                           onMouseDown={(e) => e.preventDefault()}
                           edge="end"
+                          sx={{
+                            padding: 0,
+                            '&:hover': {
+                              backgroundColor: 'transparent',
+                            },
+                          }}
                         >
-                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                          {showPassword ? <Visibility /> : <VisibilityOff />}
                         </IconButton>
                       </InputAdornment>
                     ),

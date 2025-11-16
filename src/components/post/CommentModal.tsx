@@ -68,8 +68,6 @@ export default function CommentModal({
 }: CommentModalProps) {
     const [commentText, setCommentText] = useState('');
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const [liked, setLiked] = useState(isLikedProp ?? post.isLiked ?? false);
-    const [likeCount, setLikeCount] = useState(likeCountProp ?? post.likeCount ?? 0);
     const [comments, setComments] = useState<PostComment[]>(post.comments || []);
     const [loadingComments, setLoadingComments] = useState(false);
     const [commentLikes, setCommentLikes] = useState<Record<string, boolean>>({});
@@ -81,12 +79,9 @@ export default function CommentModal({
     const { user } = useUser();
     const toast = useToast();
 
-
-    // Sync with parent's like state
-    useEffect(() => {
-        if (isLikedProp !== undefined) setLiked(isLikedProp);
-        if (likeCountProp !== undefined) setLikeCount(likeCountProp);
-    }, [isLikedProp, likeCountProp]);
+    // Use props if provided, otherwise fall back to post data
+    const liked = isLikedProp !== undefined ? isLikedProp : (post.isLiked ?? false);
+    const likeCount = likeCountProp !== undefined ? likeCountProp : (post.likeCount ?? 0);
 
     // Sync comments when post changes
     useEffect(() => {
@@ -105,25 +100,15 @@ export default function CommentModal({
 
     const handleLikePost = async () => {
         if (onLikePost) {
+            // Use parent's like handler if provided
             onLikePost();
-            return;
-        }
-
-        const previousLiked = liked;
-        const previousCount = likeCount;
-
-        setLiked(!liked);
-        setLikeCount(liked ? likeCount - 1 : likeCount + 1);
-
-        try {
-            const response = await likePost(post._id);
-            if (response.isLiked !== undefined) {
-                setLikeCount(response.likeCount);
+        } else {
+            try {
+                await likePost(post._id);
+                toast.success('Like updated');
+            } catch (error) {
+                toast.error('Failed to update like');
             }
-        } catch (error) {
-            setLiked(previousLiked);
-            setLikeCount(previousCount);
-            toast.error('Failed to update like');
         }
     };
 

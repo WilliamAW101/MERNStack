@@ -19,8 +19,9 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DeleteIcon from '@mui/icons-material/Delete';
 import StarIcon from '@mui/icons-material/Star';
 import { useToast } from '@/context/toast';
-import { getUploadUrl, createPost, uploadFileToS3 } from '@/services/api.service';
+import { getUploadUrl, createPost } from '@/services/api.service';
 import { ContentType, FileExtension } from '@/types/upload.types';
+import SignatureLogo from '../common/SignatureLogo';
 
 interface CreatePostModalProps {
     open: boolean;
@@ -104,7 +105,6 @@ export default function CreatePostModal({ open, onClose, onPostCreated }: Create
             });
 
             // Step 2: Upload file directly to S3 using presigned URL
-            await uploadFileToS3(uploadUrlResponse.uploadUrl, selectedFile);
 
             // Step 3: Create post with the S3 key
             const isVideo = selectedFile.type.startsWith('video/');
@@ -180,7 +180,9 @@ export default function CreatePostModal({ open, onClose, onPostCreated }: Create
                     fontWeight: 600,
                 }}
             >
-                Create New Post
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <SignatureLogo size="small" color="#000" />
+                </Box>
                 <IconButton
                     onClick={handleClose}
                     disabled={uploading}

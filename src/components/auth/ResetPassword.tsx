@@ -8,7 +8,6 @@ import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import EmailIcon from '@mui/icons-material/Email';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { useToast } from '@/context/toast';
@@ -30,7 +29,7 @@ export default function ResetPassword({ id }: ResetPasswordProps) {
     const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
     const toast = useToast();
     const router = useRouter();
-    const baseUrl = 'http://localhost:5000';
+    const baseUrl = process.env.REMOTE_URL;
 
     const validatePassword = () => {
         let isValid = true;
@@ -140,6 +139,12 @@ export default function ResetPassword({ id }: ResetPasswordProps) {
                                         onClick={() => setShowPassword(!showPassword)}
                                         onMouseDown={(e) => e.preventDefault()}
                                         edge="end"
+                                        sx={{
+                                            padding: 0,
+                                            '&:hover': {
+                                                backgroundColor: 'transparent',
+                                            },
+                                        }}
                                     >
                                         {showPassword ? <Visibility /> : <VisibilityOff />}
                                     </IconButton>
@@ -178,6 +183,12 @@ export default function ResetPassword({ id }: ResetPasswordProps) {
                                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                                         onMouseDown={(e) => e.preventDefault()}
                                         edge="end"
+                                        sx={{
+                                            padding: 0,
+                                            '&:hover': {
+                                                backgroundColor: 'transparent',
+                                            },
+                                        }}
                                     >
                                         {showConfirmPassword ? <Visibility /> : <VisibilityOff />}
                                     </IconButton>
