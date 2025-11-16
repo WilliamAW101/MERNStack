@@ -286,10 +286,10 @@ router.get('/getPost', authenticateToken, async (req, res) => {
 
         
         const user = await userCollection.findOne({ _id: new ObjectId(post.userId) });
-        if (user.profilePicture && user.profilePicture.key)
+        let profileImageURL = null;
+        if (user && user.profilePicture && user.profilePicture.key) {
             profileImageURL = await grabURL(user.profilePicture.key);
-        else
-            profileImageURL = null;
+        }
         post.userProfilePic = profileImageURL;
 
         post.imageURLs = null;
@@ -311,14 +311,14 @@ router.get('/getPost', authenticateToken, async (req, res) => {
         post.comments = comments;
         post.likes = likes;
 
-        // const data = {
-        //     post,
-        //     profileImageURL,
-        //     comments,
-        //     likes
-        // };
+        const data = {
+            post,
+            profileImageURL,
+            comments,
+            likes
+        };
 
-        return responseJSON(res, true, post, 'Post retrieved successfully!', 200);
+        return responseJSON(res, true, data, 'Post retrieved successfully!', 200);
     } catch (e) {
         console.error('Get post error:', e);
         return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to retrieve post', 500);
