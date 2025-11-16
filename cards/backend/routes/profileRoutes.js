@@ -51,7 +51,7 @@ router.get('/personalPosts', authenticateToken, async (req, res) => {
 
         let query = {
             timestamp: { $lt: new Date() }, // current time
-            userId: user._id.toString()
+            userId: user._id
         };
         if (lastTimestamp && !isNaN(Date.parse(lastTimestamp))) {
             query.timestamp = { $lt: new Date(lastTimestamp) };
