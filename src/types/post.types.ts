@@ -17,6 +17,13 @@ export interface PostComment {
     userProfilePic?: string | null;
 }
 
+export interface PostLike {
+    _id: string;
+    user_id: string;
+    post_id: string;
+    likedAt: string;
+}
+
 export interface Post {
     _id: string;
     userId: string;
@@ -28,12 +35,13 @@ export interface Post {
     location: string | null;
     timestamp: string;
     likeCount?: number;
-    likes: string[]; // Array of user IDs who liked the post
+    likes?: PostLike[]; // Array of like objects from the backend
     commentCount?: number;
     comments?: PostComment[];
     isLiked?: boolean;
     username: string;
     userProfilePic: string;
+    profileImageURL?: string; // Profile image URL from backend
 }
 
 /**

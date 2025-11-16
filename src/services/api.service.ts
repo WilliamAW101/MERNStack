@@ -14,6 +14,7 @@ import {
 import { Comment } from '@/types/comment.types';
 
 const BASE_URL = process.env.REMOTE_URL;
+console.log('BASE_URL', BASE_URL);
 
 /**
  * Generic fetch wrapper with error handling
@@ -83,7 +84,13 @@ export async function fetchPostById(postId: string): Promise<Post> {
     }
     );
 
-    return response.data
+    // Extract username from comments if available, otherwise use "Unknown"
+    const username = response.data.comments?.[0]?.userName || "Unknown";
+
+    return {
+        ...response.data,
+        username,
+    };
 }
 
 /**

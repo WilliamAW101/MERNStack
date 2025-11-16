@@ -26,7 +26,7 @@ import EditProfileModal from './EditProfileModal';
 import CommentModal from '../post/CommentModal';
 import { useToast } from '@/context/toast';
 import { useUser } from '@/context/user/UserContext';
-import { Post } from '@/types/post.types';
+import { Post, PostLike } from '@/types/post.types';
 import {
     getProfileInfo,
     fetchProfilePosts,
@@ -48,8 +48,6 @@ interface UserInfo {
     userProfilePic: string | null;
 }
 
-
-
 export default function Profile({ userName }: { userName: string }) {
     const [tabValue, setTabValue] = useState(0);
     const [openEditModal, setOpenEditModal] = useState(false);
@@ -67,6 +65,7 @@ export default function Profile({ userName }: { userName: string }) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const toast = useToast();
     const { user } = useUser();
+    const currentUserId = user?.id;
 
     // Check if this is the current user's profile
     const isOwnProfile = user?.userName === userName;
@@ -262,10 +261,18 @@ export default function Profile({ userName }: { userName: string }) {
         try {
             const fullPost = await fetchPostById(post._id);
             console.log('fullPost', fullPost);
-            // const isLiked = post.likes.includes(user.id);
-            // const likeCount = post.likeCount;
-            // fullPost.isLiked = isLiked;
-            // fullPost.likeCount = post.likeCount;
+            console.log('currentUserId', currentUserId);
+
+            // Check if current user has liked this post
+            const isLiked = fullPost.likes
+                ? fullPost.likes.some((like: PostLike) => like.user_id === currentUserId)
+                : false;
+
+            console.log('isLiked', isLiked);
+
+            // Add isLiked to the fullPost object
+            fullPost.isLiked = isLiked;
+
             setSelectedPost(fullPost);
             setCommentModalOpen(true);
         } catch (error) {
