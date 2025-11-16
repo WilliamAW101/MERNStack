@@ -250,12 +250,11 @@ router.post('/checkCode', async (req, res) => {
 // payload will need a verification code that will be sent via email that the user has verified
 router.post('/changePassword', async (req, res) => {
     const requiredFields = {
-        id,
+        code,
         newPassword,
         samePassword
     } = req.body;
 
-    // check to see if everything is filled out
     const missingFields = Object.entries(requiredFields)
         .filter(([, value]) => value === undefined || value === null || value === '')
         .map(([key]) => key);
@@ -263,34 +262,33 @@ router.post('/changePassword', async (req, res) => {
         return responseJSON(res, false, { code: 'Bad Request' }, `Missing required field${missingFields.length > 1 ? 's' : ''}: ${missingFields.join(', ')}`, 400);
     }
 
-    if (requiredFields.newPassword != requiredFields.samePassword)
-        return responseJSON(res, false, { code: 'Unauthorized' }, 'Passwords do not match', 401)
+    if (requiredFields.newPassword !== requiredFields.samePassword) {
+        return responseJSON(res, false, { code: 'Unauthorized' }, 'Passwords do not match', 401);
+    }
 
-    // change the password
     const db = await connectToDatabase();
     const userCollection = db.collection('user');
-    const hashedPassword = await hashPass(requiredFields.newPassword);
+    const codeCollection = db.collection('passwordVerify');
 
-    const userId = new ObjectId(requiredFields.id);
-    // replace the old password with new
+    const verification = await codeCollection.findOne({ code: requiredFields.code });
+    if (!verification) {
+        return responseJSON(res, false, { code: 'Unauthorized' }, 'Invalid Code', 401);
+    }
+
+    const hashedPassword = await hashPass(requiredFields.newPassword);
+    const userId = new ObjectId(verification.id);
+
     const result = await userCollection.updateOne(
-        {_id: userId},
-        { $set: {password: hashedPassword} }
+        { _id: userId },
+        { $set: { password: hashedPassword } }
     );
 
-    const ret = {
-      id: result.insertedId,
-    };
-
     if (result.matchedCount === 0) {
-      responseJSON(res, false, ret, 'No user found with that ID.', 400);
-      return;
-    } else if (result.modifiedCount === 0) {
-      responseJSON(res, false, ret, 'Password was not updated (maybe same as old one).', 401);
-      return;
-    } else {
-      console.log("Password successfully updated!");
+        return responseJSON(res, false, { code: 'Not Found' }, 'No user found with that ID.', 404);
     }
+
+    await codeCollection.deleteOne({ code: requiredFields.code });
+
     responseJSON(res, true, 'Password has been changed', 'Password Change Success!', 201);
 });
 
