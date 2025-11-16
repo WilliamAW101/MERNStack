@@ -292,14 +292,33 @@ router.get('/getPost', authenticateToken, async (req, res) => {
             profileImageURL = null;
         post.userProfilePic = profileImageURL;
 
-        const data = {
-            post,
-            profileImageURL,
-            comments,
-            likes
-        };
+        post.imageURLs = null;
+        const imageURLs = [];
+        if (Array.isArray(post.images) && post.images.length > 0) {
+            for (const image of post.images) {
+                if (image.key) {
+                    const imageURL = await grabURL(image.key);
+                    if (imageURL == null) {
+                        responseJSON(res, false, { code: 'AWS error' }, 'Failed to grab image URL ', 500);
+                        return null;
+                    }
+                    imageURLs.push(imageURL);
+                }
+            }
+        }
+        post.imageURLs = imageURLs;
+        post.profileImageURL = profileImageURL;
+        post.comments = comments;
+        post.likes = likes;
 
-        return responseJSON(res, true, data, 'Post retrieved successfully!', 200);
+        // const data = {
+        //     post,
+        //     profileImageURL,
+        //     comments,
+        //     likes
+        // };
+
+        return responseJSON(res, true, post, 'Post retrieved successfully!', 200);
     } catch (e) {
         console.error('Get post error:', e);
         return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to retrieve post', 500);
