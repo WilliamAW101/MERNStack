@@ -41,7 +41,8 @@ const refreshToken = (token) => { // refreshing token expiration
 
 const sendVerificationEmail = async (to, token) => {
   sgMail.setApiKey(process.env.SENDGRIND_API_KEY);
-  const verifyLink = `http://localhost:5000/api/verifyEmail?token=${token}`; // will need to change later
+  const baseURL = process.env.BASE_URL || 'http://localhost:5000';
+  const verifyLink = `${baseURL}/api/verifyEmail?token=${token}`;
 
   const mailOptions = {
     from: `"CraigTag" <${process.env.EMAIL_USER}>`,
