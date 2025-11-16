@@ -100,7 +100,7 @@ router.get('/getProfileInfo', authenticateToken, async (req, res) => {
         }
 
         const numberOfTotalPosts = await postCollection.countDocuments({
-            userId: userInfo._id.toString()
+            userId: userInfo._id
         });
         
         if (userInfo.profilePicture && userInfo.profilePicture.key)
