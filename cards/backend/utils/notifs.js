@@ -14,8 +14,9 @@ const saveNotification = async (notificationData, db, sendTo, global) => {
 const sendNotification = async (notif, notificationData, db, sendTo, global) => {
 
     const room = `user-${sendTo}`;
+    // console.log(room);
     const sockets = await notif.in(room).fetchSockets();
-
+    // console.log(sockets);
     if (global) {
         notif.emit('notification', {
             ...notificationData

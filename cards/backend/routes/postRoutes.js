@@ -565,7 +565,7 @@ router.post('/likePost', authenticateToken, async (req, res) => {
             );
 
             // send notification
-            if (post.userId != userObjectId) { // dont sent notif if it is user's own post
+            if (post.userId != userObjectId.toString()) { // dont sent notif if it is user's own post
                 const notif = req.app.get('socketio');
                 const userCollection = db.collection('user');
 

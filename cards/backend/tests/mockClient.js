@@ -9,7 +9,7 @@ socket.on('connect', () => {
     console.log('✅ Mock client connected:', socket.id);
     
     // Simulate user login - register with userId
-    const mockUserId = '123';
+    const mockUserId = '68fd9196017b93f72ef9882e';
     socket.emit('register', mockUserId);
     console.log(`📤 Registered as user ${mockUserId}`);
 });
