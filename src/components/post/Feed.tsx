@@ -29,7 +29,7 @@ const suggestedHikingBuddies = [
     { name: 'Lisa Summit', handle: '@lisas', avatar: null, bio: 'Adventure seeker' },
 ];
 
-export default function Feed() {
+export default function Feed({ isConnected, setIsConnected }: { isConnected: boolean, setIsConnected: (isConnected: boolean) => void }) {
     const [posts, setPosts] = useState<PostType[]>([]);
     const [loading, setLoading] = useState(true);
     const [nextCursor, setNextCursor] = useState<string | null>(null);

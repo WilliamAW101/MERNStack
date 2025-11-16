@@ -14,13 +14,13 @@ import {
 // Hiking-themed icons (revert to: Home, Search, Notifications, AddCircle if needed)
 import TerrainIcon from '@mui/icons-material/Terrain';
 import HikingIcon from '@mui/icons-material/Hiking';
-import NotificationsIcon from '@mui/icons-material/Notifications';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { useRouter, usePathname } from 'next/navigation';
 import CreatePostModal from '../post/CreatePostModal';
 import SignatureLogo from '../common/SignatureLogo';
+import NotificationBell from '../notification/NotificationBell';
 
 export default function Sidebar() {
     const router = useRouter();
@@ -46,7 +46,7 @@ export default function Sidebar() {
     const navigationItems = [
         { text: 'Discover', icon: <TerrainIcon />, path: '/', action: 'navigate' },
         { text: 'Find Hikers', icon: <HikingIcon />, path: '/search', action: 'navigate' },
-        { text: 'Notifications', icon: <NotificationsIcon />, path: '/notifications', action: 'navigate' },
+        { text: 'Notifications', icon: null, path: '/notifications', action: 'notification' },
         { text: 'Log My Hike', icon: <CameraAltIcon />, path: '/create', action: 'modal' },
         { text: 'Profile', icon: <AccountCircleIcon />, path: `/${userName}`, action: 'navigate' },
     ];
@@ -98,6 +98,37 @@ export default function Sidebar() {
                 <List sx={{ flex: 1 }}>
                     {navigationItems.map((item, index) => {
                         const isActive = pathname === item.path && item.action === 'navigate';
+
+                        // Special rendering for Notifications
+                        if (item.action === 'notification') {
+                            return (
+                                <ListItem key={index} disablePadding sx={{ mb: 0.5 }}>
+                                    <Box
+                                        sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            width: '100%',
+                                            borderRadius: 2,
+                                            py: 1,
+                                            px: 1,
+                                        }}
+                                    >
+                                        <NotificationBell />
+                                        <ListItemText
+                                            primary={item.text}
+                                            primaryTypographyProps={{
+                                                fontSize: { md: '1rem', lg: '1.05rem' },
+                                                fontWeight: 400,
+                                                color: '#424242',
+                                                ml: 1,
+                                            }}
+                                            sx={{ ml: 1 }}
+                                        />
+                                    </Box>
+                                </ListItem>
+                            );
+                        }
+
                         return (
                             <ListItem key={index} disablePadding sx={{ mb: 0.5 }}>
                                 <ListItemButton

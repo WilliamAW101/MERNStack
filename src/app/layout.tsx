@@ -3,6 +3,7 @@ import "./globals.css";
 import { UserProvider } from "@/context/user/UserContext";
 import { ToastProvider } from "@/context/toast";
 import MuiProvider from "@/components/common/MuiProvider";
+import { NotificationProvider } from "@/context/notification/NotificationContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,11 +26,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
         <MuiProvider>
-        <ToastProvider>
-          <UserProvider>
-            {children}
-          </UserProvider>
-        </ToastProvider>
+          <ToastProvider>
+            <UserProvider>
+                {children}
+            </UserProvider>
+          </ToastProvider>
         </MuiProvider>
       </body>
     </html>
