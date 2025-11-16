@@ -133,7 +133,7 @@ router.put('/updatePost', authenticateToken, async (req, res) => {
             return responseJSON(res, false, { code: 'Not Found' }, 'Post not found', 404);
         }
 
-        if (post.userId !== userId) {
+        if (post.userId !== userId.toString()) {
             return responseJSON(res, false, { code: 'Forbidden' }, 'You do not have permission to update this post', 403);
         }
 
@@ -238,7 +238,7 @@ router.delete('/deletePost', authenticateToken, async (req, res) => {
             return responseJSON(res, false, { code: 'Not Found' }, 'Post not found', 404);
         }
 
-        if (post.userId !== userId) {
+        if (post.userId !== userId.toString()) {
             return responseJSON(res, false, { code: 'Forbidden' }, 'You do not have permission to delete this post', 403);
         }
 
