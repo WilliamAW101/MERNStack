@@ -19,7 +19,8 @@ const {
 } = require('../utils/authentication.js');
 const {
     grabURL
-} = require('../utils/aws.js')
+} = require('../utils/aws.js');
+const { auth } = require('googleapis/build/src/apis/abusiveexperiencereport/index.js');
 
 router.get('/personalPosts', authenticateToken, async (req, res) => {
     try {
@@ -223,6 +224,68 @@ router.post('/uploadProfilePictureKey', authenticateToken, async (req, res) => {
         responseJSON(res, false, { code: 'Internal server error' }, 'uploadProfilePicture endpoint failed ' + error, 500);
     }
 });
+
+router.get('/grabNotifications', authenticateToken, async (req, res) => {
+    try {
+        const id = req.query.id || req.user.id;
+        const { lastTimestamp } = req.query; // optional, grab 20 latest if not provided
+
+        const db = await connectToDatabase();
+        const notificationCollection = db.collection('notifications');
+
+        const query = {
+            sendTo: new ObjectId(id),
+            isGlobal: false,
+            read: false,
+        };
+
+        // If lastTimestamp provided, get notifications older than that
+        if (lastTimestamp && !isNaN(Date.parse(lastTimestamp))) {
+            query['data.timestamp'] = { $lt: new Date(lastTimestamp) };
+        }
+
+        // Default timestamp filter if none given
+        if (!query['data.timestamp']) {
+            query['data.timestamp'] = { $lt: new Date() };
+        }
+
+        // grab all notifications that are not read for the user
+        const personalNotifications = await notificationCollection.find(query).sort({ 'data.timestamp': -1 }).limit(20).toArray();
+
+        const nextCursor = personalNotifications.length ? personalNotifications[personalNotifications.length - 1].data.timestamp : null;
+
+        return responseJSON(res, true, { personalNotifications, nextCursor }, 'Notifications grabbed', 200);
+    } catch (e) {
+        error = e.toString();
+        responseJSON(res, false, { code: 'Internal server error' }, 'grabNotifications endpoint failed ' + error, 500);
+    }
+})
+
+router.post('/markRead', authenticateToken, async (req, res) => {
+    try {
+        const { 
+            notifID
+        } = req.body
+
+        const db = await connectToDatabase();
+        const notificationCollection = db.collection('notifications');
+
+        const result = await notificationCollection.updateOne(
+            { _id: new ObjectId(notifID) },
+            { $set: { read: true} }
+        );
+
+        if (result.modifiedCount === 0) {
+            return responseJSON(res, false, {}, 'Notification not found or already read', 404);
+        }
+
+
+        return responseJSON(res, true, result, 'Notification marked as read', 200);
+    } catch (e) {
+        error = e.toString();
+        responseJSON(res, false, { code: 'Internal server error' }, 'grabNotifications endpoint failed ' + error, 500);
+    }
+})
 
 
 module.exports = router;

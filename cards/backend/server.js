@@ -19,7 +19,7 @@ const socketIOServer = new Server(serverHost, {
 require('./config/socket')(socketIOServer);
 app.set('socketio', socketIOServer);
 
-// require('./socket/notifsHandle')(socketIOServer);
+require('./socket/notifsHandle')(socketIOServer);
 
 serverHost.listen(PORT, () => {
     console.log(`Starting new and improved server on ${PORT} :D`);

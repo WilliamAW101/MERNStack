@@ -15,62 +15,85 @@ const {
 const {
     getCommentImageURL
 } = require('../utils/posts.js');
+const { 
+    sendNotification 
+} = require('../utils/notifs.js');
 
 router.post('/addPost', authenticateToken, async (req, res) => {
   // Payload in: { caption, difficulty, rating, images?: [{ key, type }], location? }
   // Payload out: { postId, timestamp, error }
-  try {
-    const { caption, difficulty, rating, images, location } = req.body;
+    try {
+        const { caption, difficulty, rating, images, location } = req.body;
 
-    // auth
-    const userId = new ObjectId(req.user.id);
+        // auth
+        const userId = new ObjectId(req.user.id);
 
-    // basic validation
-    if (!caption) return res.status(400).json({ error: 'Caption is required' });
-    if (difficulty === undefined || difficulty === null)
-      return res.status(400).json({ error: 'Difficulty is required' });
-    if (rating === undefined || rating === null)
-      return res.status(400).json({ error: 'Rating is required' });
+        // basic validation
+        if (!caption) return res.status(400).json({ error: 'Caption is required' });
+        if (difficulty === undefined || difficulty === null)
+          return res.status(400).json({ error: 'Difficulty is required' });
+        if (rating === undefined || rating === null)
+          return res.status(400).json({ error: 'Rating is required' });
 
-    if (typeof difficulty !== 'number' || difficulty < 0)
-      return res.status(400).json({ error: 'Difficulty must be a non-negative number' });
-    if (typeof rating !== 'number' || rating < 0)
-      return res.status(400).json({ error: 'Rating must be a non-negative number' });
+        if (typeof difficulty !== 'number' || difficulty < 0)
+          return res.status(400).json({ error: 'Difficulty must be a non-negative number' });
+        if (typeof rating !== 'number' || rating < 0)
+          return res.status(400).json({ error: 'Rating must be a non-negative number' });
 
-    // sanitize images: keep only valid S3 keys and type (image|video)
-    const safeImages = Array.isArray(images)
-      ? images
-          .filter(m => m && typeof m.key === 'string' && m.key.trim().length > 0)
-          .map(m => ({
-            provider: 's3',
-            key: m.key,
-            type: m.type === 'video' ? 'video' : 'image'
-          }))
-      : null;
+        // sanitize images: keep only valid S3 keys and type (image|video)
+        const safeImages = Array.isArray(images)
+          ? images
+              .filter(m => m && typeof m.key === 'string' && m.key.trim().length > 0)
+              .map(m => ({
+                provider: 's3',
+                key: m.key,
+                type: m.type === 'video' ? 'video' : 'image'
+              }))
+          : null;
 
-    const db = await connectToDatabase();
-    const collection = db.collection('post');
+        const db = await connectToDatabase();
+        const collection = db.collection('post');
+        const userCollection = db.collection('user');
 
-    const timestamp = new Date();
+        const timestamp = new Date();
 
-    const newPost = {
-      userId,
-      caption,
-      difficulty,
-      rating,
-      images: safeImages,         // e.g., [{ provider:'s3', key:'posts/uid/uuid.jpg', type:'image' }]
-      location: location || null,
-      timestamp,
-      likeCount: 0,
-      commentCount: 0,
-    };
+        const newPost = {
+          userId,
+          caption,
+          difficulty,
+          rating,
+          images: safeImages,         // e.g., [{ provider:'s3', key:'posts/uid/uuid.jpg', type:'image' }]
+          location: location || null,
+          timestamp,
+          likeCount: 0,
+          commentCount: 0,
+        };
 
-    const result = await collection.insertOne(newPost);
+        const result = await collection.insertOne(newPost);
 
         const data = {
             postId: result.insertedId,
             timestamp
         };
+        
+        // making a global notification to all users that a post was made
+        const post = await collection.findOne( { _id: result.insertedId})
+        const notif = req.app.get('socketio');
+        const user = await userCollection.findOne( {_id: post.userId })
+
+        // for storing in database
+        const notificationData = {
+            type: 'Post',
+            message: `${user.userName} made a new post`,
+            data: {
+                postId: result.insertedId,
+                userId: post.userId,
+                LikerUsername: user.userName,
+                timestamp: new Date()
+            }
+        }
+
+        await sendNotification(notif, notificationData, db, post.userId, true) // send too does not matter
 
         return responseJSON(res, true, data, 'Post created successfully!', 201);
     } catch (e) {
@@ -311,13 +334,6 @@ router.get('/getPost', authenticateToken, async (req, res) => {
         post.comments = comments;
         post.likes = likes;
 
-        // const data = {
-        //     post,
-        //     profileImageURL,
-        //     comments,
-        //     likes
-        // };
-
         return responseJSON(res, true, post, 'Post retrieved successfully!', 200);
     } catch (e) {
         console.error('Get post error:', e);
@@ -385,6 +401,23 @@ router.post('/addComment', authenticateToken, async (req, res) => {
             commentId: result.insertedId,
             timestamp
         };
+
+        // send notification
+        if (post.userId != userId) { // dont sent notif if it is user's own post
+            const notif = req.app.get('socketio');
+            const notificationData = {
+                type: 'Comment',
+                message: `${userName} made a comment on your post`,
+                data: {
+                    postId: post._id,
+                    commentorId: userId,
+                    commentorUsername: userName,
+                    commentId: result.insertedId,
+                    timestamp: new Date()
+                }
+            }
+            await sendNotification(notif, notificationData, db, post.userId, false);
+        }
 
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 
@@ -463,7 +496,6 @@ router.post('/likePost', authenticateToken, async (req, res) => {
 
         // Get userId and userName from authenticated token
         const userId = req.user.id;
-        const userName = req.user.userName;
 
         // Validate required fields
         if (!postId) {
@@ -531,6 +563,25 @@ router.post('/likePost', authenticateToken, async (req, res) => {
                 { _id: postObjectId },
                 { $inc: { likeCount: 1 } }
             );
+
+            // send notification
+            if (post.userId != userObjectId) { // dont sent notif if it is user's own post
+                const notif = req.app.get('socketio');
+                const userCollection = db.collection('user');
+
+                const user = await userCollection.findOne({ _id: post.userId });
+                const notificationData = {
+                    type: 'Like',
+                    message: `${req.user.userName} liked your post`,
+                    data: {
+                        postId: postId,
+                        LikerId: req.user.id,
+                        LikerUsername: req.user.userName,
+                        timestamp: new Date()
+                    }
+                }
+                await sendNotification(notif, notificationData, db, post.userId, false);
+            }
 
             isLiked = true;
             message = 'Post liked successfully!';
