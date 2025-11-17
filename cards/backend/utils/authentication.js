@@ -45,7 +45,7 @@ const sendVerificationEmail = async (to, token) => {
   const verifyLink = `${baseURL}/api/verifyEmail?token=${token}`;
 
   const mailOptions = {
-    from: `"CraigTag" <${process.env.EMAIL_USER}>`,
+    from: `"Crag Tag" <${process.env.EMAIL_USER}>`,
     to,
     subject: 'Verify your email address',
     html: `
@@ -73,7 +73,7 @@ const sendPasswordChangeToken = async (to, code) => {
   sgMail.setApiKey(process.env.SENDGRIND_API_KEY);
 
   const mailOptions = {
-    from: `"CraigTag" <${process.env.EMAIL_USER}>`,
+    from: `"Crag Tag" <${process.env.EMAIL_USER}>`,
     to,
     subject: 'Code for Password Change',
     html: `
