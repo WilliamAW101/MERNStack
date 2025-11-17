@@ -20,22 +20,27 @@ const {
 } = require('../utils/notifs.js');
 
 router.post('/addPost', authenticateToken, async (req, res) => {
+    // Payload in: { caption, difficulty, rating, images?: [{ key, type }], location? }
+    // Payload out: { postId, timestamp, error }
     try {
         const { caption, difficulty, rating, images, location } = req.body;
+
+        // auth
         const userId = new ObjectId(req.user.id);
-        
-        // Validation
+
+        // basic validation
         if (!caption) return res.status(400).json({ error: 'Caption is required' });
         if (difficulty === undefined || difficulty === null)
             return res.status(400).json({ error: 'Difficulty is required' });
         if (rating === undefined || rating === null)
             return res.status(400).json({ error: 'Rating is required' });
+
         if (typeof difficulty !== 'number' || difficulty < 0)
             return res.status(400).json({ error: 'Difficulty must be a non-negative number' });
         if (typeof rating !== 'number' || rating < 0)
             return res.status(400).json({ error: 'Rating must be a non-negative number' });
-        
-        // Sanitize images
+
+        // sanitize images: keep only valid S3 keys and type (image|video)
         const safeImages = Array.isArray(images)
             ? images
                 .filter(m => m && typeof m.key === 'string' && m.key.trim().length > 0)
@@ -45,36 +50,52 @@ router.post('/addPost', authenticateToken, async (req, res) => {
                     type: m.type === 'video' ? 'video' : 'image'
                 }))
             : null;
-        
+
         const db = await connectToDatabase();
+        const collection = db.collection('post');
+        const userCollection = db.collection('user');
+
         const timestamp = new Date();
-        
-        // Parallel: Insert post + Get user data
-        const [result, user] = await Promise.all([
-            db.collection('post').insertOne({
-                userId,
-                caption,
-                difficulty,
-                rating,
-                images: safeImages,
-                location: location || null,
-                timestamp,
-                likeCount: 0,
-                commentCount: 0,
-            }),
-            db.collection('user').findOne({ _id: userId }, { projection: { userName: 1 } })
-        ]);
-        
-        if (!user) {
-            return responseJSON(res, false, { code: 'User not found' }, 'User not found', 404);
-        }
-        
-        // Respond immediately
-        return responseJSON(res, true, {
+
+        const newPost = {
+            userId,
+            caption,
+            difficulty,
+            rating,
+            images: safeImages,         // e.g., [{ provider:'s3', key:'posts/uid/uuid.jpg', type:'image' }]
+            location: location || null,
+            timestamp,
+            likeCount: 0,
+            commentCount: 0,
+        };
+
+        const result = await collection.insertOne(newPost);
+
+        const data = {
             postId: result.insertedId,
             timestamp
-        }, 'Post created successfully!', 201);
-        
+        };
+
+        // making a global notification to all users that a post was made
+        const post = await collection.findOne({ _id: result.insertedId })
+        const notif = req.app.get('socketio');
+        const user = await userCollection.findOne({ _id: post.userId })
+
+        // for storing in database
+        const notificationData = {
+            type: 'Post',
+            message: `${user.userName} made a new post`,
+            data: {
+                postId: result.insertedId,
+                userId: post.userId,
+                LikerUsername: user.userName,
+                timestamp: new Date()
+            }
+        }
+
+        await sendNotification(notif, notificationData, db, post.userId.toString(), true) // send too does not matter
+
+        return responseJSON(res, true, data, 'Post created successfully!', 201);
     } catch (e) {
         console.error('Add post error:', e);
         return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to create post', 500);
@@ -380,23 +401,6 @@ router.post('/addComment', authenticateToken, async (req, res) => {
             commentId: result.insertedId,
             timestamp
         };
-
-        // send notification
-        if (post.userId != userId.toString()) { // dont sent notif if it is user's own post
-            const notif = req.app.get('socketio');
-            const notificationData = {
-                type: 'Comment',
-                message: `${userName} made a comment on your post`,
-                data: {
-                    postId: post._id,
-                    commentorId: userId,
-                    commentorUsername: userName,
-                    commentId: result.insertedId,
-                    timestamp: new Date()
-                }
-            }
-            await sendNotification(notif, notificationData, db, post.userId.toString(), false);
-        }
 
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 
