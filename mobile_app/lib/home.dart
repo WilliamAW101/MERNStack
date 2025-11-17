@@ -251,8 +251,8 @@ class _HomePageState extends State<HomePage> {
                 _posts = newPosts;
               }
               _lastTimestamp = nextCursor;
-              // If we got less than 10 posts, there are no more to load
-              _hasMore = newPosts.length >= 10 && nextCursor != null;
+              // If we got less than 5 posts, there are no more to load
+              _hasMore = newPosts.length >= 5 && nextCursor != null;
               _isLoading = false;
             });
           } catch (parseError) {
