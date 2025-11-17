@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -7,10 +8,12 @@ import 'home_components/navbar.dart';
 import 'home_components/create_post.dart';
 import 'home.dart';
 import 'services/api.dart';
+import 'services/notification_service.dart';
 import 'models/post_model.dart';
 import 'components/s3_image.dart';
 import 'components/post_card.dart';
 import 'pages/edit_profile_page.dart';
+import 'pages/notifications_page.dart';
 import 'auth/welcome.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -22,6 +25,7 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   final ThemeController _theme = ThemeController();
+  final NotificationService _notificationService = NotificationService();
   int _tab = 2;
   int _filter = 0;
   
@@ -155,7 +159,11 @@ class _ProfilePageState extends State<ProfilePage> {
     final result = await showCreatePostSheet(context);
     if (result == true) {
       // Refresh posts after creating a new post
-      _loadProfileData();
+      setState(() {
+        _loading = true;
+        _posts.clear();
+      });
+      await _loadProfileData();
     }
   }
 
@@ -463,28 +471,64 @@ class _ProfilePageState extends State<ProfilePage> {
                 titleSpacing: 20,
                 title: Text(
                   'My profile',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
+                  style: GoogleFonts.bebasNeue(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w400,
                     color: theme.colorScheme.onSurface,
+                    letterSpacing: 1.2,
                   ),
                 ),
                 actions: [
                   Padding(
                     padding: const EdgeInsets.only(right: 4),
-                    child: IconButton(
-                      icon: Icon(
-                        Icons.notifications_outlined,
-                        size: 26,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                      tooltip: 'Notifications',
-                      onPressed: () {
-                        // TODO: Navigate to notifications page when backend is ready
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Notifications feature coming soon!'),
-                            duration: Duration(seconds: 2),
-                          ),
+                    child: AnimatedBuilder(
+                      animation: _notificationService,
+                      builder: (context, _) {
+                        final unreadCount = _notificationService.unreadCount;
+                        return Stack(
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                Icons.notifications_outlined,
+                                size: 26,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                              tooltip: 'Notifications',
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => const NotificationsPage(),
+                                  ),
+                                );
+                              },
+                            ),
+                            if (unreadCount > 0)
+                              Positioned(
+                                right: 8,
+                                top: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 18,
+                                    minHeight: 18,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      unreadCount > 99 ? '99+' : '$unreadCount',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         );
                       },
                     ),
@@ -796,26 +840,59 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                     ] else ...[
-                      // Favorites (placeholder for now)
-                      Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(32),
-                          child: Column(
-                            children: [
-                              Icon(Icons.favorite_border,
-                                  size: 64, color: cs.onSurfaceVariant.withOpacity(0.3)),
-                              const SizedBox(height: 12),
-                              Text(
-                                'Favorites coming soon',
-                                style: TextStyle(
-                                  color: cs.onSurfaceVariant,
-                                  fontSize: 16,
+                      // Favorites - show only liked posts
+                      if (_posts.where((post) => post.isLiked).isEmpty)
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Column(
+                              children: [
+                                Icon(Icons.favorite_border,
+                                    size: 64, color: cs.onSurfaceVariant.withOpacity(0.3)),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'No favorites yet',
+                                  style: TextStyle(
+                                    color: cs.onSurfaceVariant,
+                                    fontSize: 16,
+                                  ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Posts you like will appear here',
+                                  style: TextStyle(
+                                    color: cs.onSurfaceVariant.withOpacity(0.7),
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ),
+                        )
+                      else
+                        ..._posts.where((post) => post.isLiked).toList().asMap().entries.map((entry) {
+                          final post = entry.value;
+                          final originalIndex = _posts.indexOf(post);
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: PostCard(
+                              post: post,
+                              onPostDeleted: () {
+                                // Remove the post from the list immediately
+                                setState(() {
+                                  _posts.removeAt(originalIndex);
+                                  _totalPostsCount = _totalPostsCount > 0 ? _totalPostsCount - 1 : 0;
+                                });
+                              },
+                              onPostUpdated: (updatedPost) {
+                                // Update the post in the list immediately
+                                setState(() {
+                                  _posts[originalIndex] = updatedPost;
+                                });
+                              },
+                            ),
+                          );
+                        }),
                     ],
                   ],
                 ),

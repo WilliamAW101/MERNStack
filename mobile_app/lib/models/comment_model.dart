@@ -5,6 +5,7 @@ class CommentModel {
   final String userName;
   final String commentText;
   final DateTime timestamp;
+  final String? userProfilePic;
 
   CommentModel({
     required this.id,
@@ -13,6 +14,7 @@ class CommentModel {
     required this.userName,
     required this.commentText,
     required this.timestamp,
+    this.userProfilePic,
   });
 
   factory CommentModel.fromJson(Map<String, dynamic> json) {
@@ -25,6 +27,7 @@ class CommentModel {
       timestamp: json['timestamp'] != null
           ? DateTime.parse(json['timestamp'])
           : DateTime.now(),
+      userProfilePic: json['userProfilePic'],
     );
   }
 
@@ -36,6 +39,7 @@ class CommentModel {
       'userName': userName,
       'commentText': commentText,
       'timestamp': timestamp.toIso8601String(),
+      'userProfilePic': userProfilePic,
     };
   }
 
@@ -46,6 +50,7 @@ class CommentModel {
     String? userName,
     String? commentText,
     DateTime? timestamp,
+    String? userProfilePic,
   }) {
     return CommentModel(
       id: id ?? this.id,
@@ -54,6 +59,7 @@ class CommentModel {
       userName: userName ?? this.userName,
       commentText: commentText ?? this.commentText,
       timestamp: timestamp ?? this.timestamp,
+      userProfilePic: userProfilePic ?? this.userProfilePic,
     );
   }
 }

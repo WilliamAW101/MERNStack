@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'home_components/navbar.dart';
 import 'home_components/switch.dart';
@@ -8,6 +9,7 @@ import 'models/post_model.dart';
 import 'components/post_card.dart';
 import 'components/s3_image.dart';
 import 'services/api.dart';
+import 'services/notification_service.dart';
 import 'profile.dart';
 import 'auth/sign_in.dart';
 
@@ -45,6 +47,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final ThemeController _theme = ThemeController();
   final ScrollController _scrollController = ScrollController();
+  final NotificationService _notificationService = NotificationService();
   int _tab = 0;
   
   List<PostModel> _posts = [];
@@ -67,6 +70,8 @@ class _HomePageState extends State<HomePage> {
     _loadUserInfo();
     _loadPosts();
     _scrollController.addListener(_onScroll);
+    // Connect to notification service
+    _notificationService.connect();
   }
 
   Future<void> _loadUserInfo() async {
@@ -201,6 +206,12 @@ class _HomePageState extends State<HomePage> {
         _isLoading = true;
         _lastTimestamp = null;
       });
+    } else {
+      // Set loading flag for loadMore as well to prevent duplicate requests
+      if (_isLoading) return; // Already loading, exit
+      setState(() {
+        _isLoading = true;
+      });
     }
 
     try {
@@ -240,7 +251,8 @@ class _HomePageState extends State<HomePage> {
                 _posts = newPosts;
               }
               _lastTimestamp = nextCursor;
-              _hasMore = nextCursor != null;
+              // If we got less than 10 posts, there are no more to load
+              _hasMore = newPosts.length >= 10 && nextCursor != null;
               _isLoading = false;
             });
           } catch (parseError) {
@@ -345,9 +357,11 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(width: 8),
                   Text(
                     'Crag Tag',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
+                    style: GoogleFonts.bebasNeue(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w400,
                       color: theme.colorScheme.onSurface,
+                      letterSpacing: 1.5,
                     ),
                   ),
                 ],

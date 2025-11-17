@@ -38,14 +38,11 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   String? _editingCommentId;
   final Map<String, TextEditingController> _editControllers = {};
   String _currentUserName = '';
+  String? _currentUserProfilePic;
 
   @override
   void initState() {
     super.initState();
-    print('🚀 [DEBUG] ========================================');
-    print('🚀 [DEBUG] CommentsBottomSheet opened for post: ${widget.post.id}');
-    print('🚀 [DEBUG] Post metadata shows: ${widget.post.commentCount} comments');
-    print('🚀 [DEBUG] ========================================');
     _loadCurrentUser();
     _loadComments();
     _scrollController.addListener(_onScroll);
@@ -65,6 +62,30 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   Future<void> _loadCurrentUser() async {
     final sp = await SharedPreferences.getInstance();
     _currentUserName = sp.getString('userName') ?? '';
+    _currentUserProfilePic = sp.getString('profilePicture');
+    
+    // If profile picture is not cached, fetch it from the server
+    if ((_currentUserProfilePic == null || _currentUserProfilePic!.isEmpty) && _currentUserName.isNotEmpty) {
+      try {
+        final profileResp = await Api.getProfileInfo(userName: _currentUserName);
+        if (profileResp['status'] == 200 && profileResp['data']['data'] != null) {
+          final profileData = profileResp['data']['data'];
+          final userInfo = profileData['userInfo'];
+          final profilePicUrl = userInfo?['userProfilePic'];
+          if (profilePicUrl != null && profilePicUrl.isNotEmpty) {
+            await sp.setString('profilePicture', profilePicUrl);
+            if (mounted) {
+              setState(() {
+                _currentUserProfilePic = profilePicUrl;
+              });
+            }
+          }
+        }
+      } catch (e) {
+        // Silently fail if profile fetch doesn't work
+        print('Failed to fetch profile picture: $e');
+      }
+    }
   }
 
   Future<void> _deleteComment(String commentId) async {
@@ -157,11 +178,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
     
     if (scrollPosition >= maxScroll - 200) {
       if (!_isLoading && _hasMore) {
-        print('📜 [DEBUG] User scrolled near bottom, loading more comments...');
-        print('📜 [DEBUG] Scroll position: $scrollPosition / $maxScroll');
         _loadComments(loadMore: true);
-      } else if (!_hasMore) {
-        print('📜 [DEBUG] At bottom but no more comments to load (hasMore=false)');
       }
     }
   }
@@ -175,10 +192,6 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
     }
 
     try {
-      print('🔍 [DEBUG] Loading comments for post ${widget.post.id}...');
-      print('🔍 [DEBUG] Post shows comment count: ${widget.post.commentCount}');
-      print('🔍 [DEBUG] Load more: $loadMore, Current comments loaded: ${_comments.length}');
-      
       final resp = await Api.getComments(
         postId: widget.post.id,
         lastTimestamp: _lastTimestamp,
@@ -190,10 +203,6 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
         final data = resp['data']['data'];
         final commentsData = data['comments'] as List?;
         final nextCursor = data['nextCursor'] as String?;
-
-        print('🔍 [DEBUG] API Response: status=${resp['status']}');
-        print('🔍 [DEBUG] Comments received in this batch: ${commentsData?.length ?? 0}');
-        print('🔍 [DEBUG] Next cursor exists: ${nextCursor != null && nextCursor.isNotEmpty}');
 
         if (commentsData != null) {
           final newComments = commentsData
@@ -211,26 +220,19 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
             _hasMore = nextCursor != null && nextCursor.isNotEmpty && newComments.length >= 10;
             _isLoading = false;
           });
-          
-          print('✅ [DEBUG] Total comments now loaded: ${_comments.length}');
-          print('✅ [DEBUG] Has more comments to load: $_hasMore');
-          print('✅ [DEBUG] Difference: Post says ${widget.post.commentCount}, but loaded ${_comments.length}');
         } else {
           setState(() {
             _isLoading = false;
             _hasMore = false;
           });
-          print('⚠️ [DEBUG] No comments data received from API');
         }
       } else {
         setState(() {
           _isLoading = false;
           _hasMore = false;
         });
-        print('❌ [DEBUG] API error: status=${resp['status']}, data=${resp['data']}');
       }
     } catch (e) {
-      print('❌ [DEBUG] Exception loading comments: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -346,19 +348,6 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          // Debug info showing loaded vs total
-                          if (!_isLoading && _comments.isNotEmpty)
-                            Text(
-                              'Loaded: ${_comments.length} / Expected: ${widget.post.commentCount}',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: _comments.length != widget.post.commentCount 
-                                    ? Colors.orange 
-                                    : Colors.green,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
                         ],
                       ),
                     ),
@@ -420,24 +409,8 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                                     ),
                                   );
                                 }
-                                // Show "end of comments" message
-                                return Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Center(
-                                    child: Text(
-                                      _comments.length == widget.post.commentCount
-                                          ? '✓ All ${_comments.length} comments loaded'
-                                          : '⚠️ ${_comments.length} of ${widget.post.commentCount} comments loaded',
-                                      style: TextStyle(
-                                        color: _comments.length == widget.post.commentCount 
-                                            ? Colors.green 
-                                            : Colors.orange,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                );
+                                // End of list
+                                return const SizedBox(height: 16);
                               }
 
                               final comment = _comments[index];
@@ -461,15 +434,25 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                 child: SafeArea(
                   child: Row(
                     children: [
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor: theme.colorScheme.primary,
-                        child: const Icon(
-                          Icons.person,
-                          size: 18,
-                          color: Colors.white,
-                        ),
-                      ),
+                      _currentUserProfilePic != null && _currentUserProfilePic!.isNotEmpty
+                          ? CircleAvatar(
+                              radius: 16,
+                              backgroundImage: NetworkImage(_currentUserProfilePic!),
+                            )
+                          : CircleAvatar(
+                              radius: 16,
+                              backgroundColor: theme.colorScheme.primary,
+                              child: Text(
+                                _currentUserName.isNotEmpty
+                                    ? _currentUserName[0].toUpperCase()
+                                    : 'U',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: TextField(
@@ -527,20 +510,25 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            child: Text(
-              comment.userName.isNotEmpty
-                  ? comment.userName[0].toUpperCase()
-                  : 'U',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-          ),
+          comment.userProfilePic != null && comment.userProfilePic!.isNotEmpty
+              ? CircleAvatar(
+                  radius: 18,
+                  backgroundImage: NetworkImage(comment.userProfilePic!),
+                )
+              : CircleAvatar(
+                  radius: 18,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  child: Text(
+                    comment.userName.isNotEmpty
+                        ? comment.userName[0].toUpperCase()
+                        : 'U',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

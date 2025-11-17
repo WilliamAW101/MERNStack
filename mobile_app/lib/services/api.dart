@@ -5,9 +5,9 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Api {
-  // For Android Emulator, use 10.0.2.2 to access localhost
-  // For iOS Simulator or real device, use your computer's IP address
-  static const String kBase = 'http://10.0.2.2:5000';
+  // Backend URL - change this to switch between localhost and deployed
+  // static const String kBase = 'http://10.0.2.2:5000'; // Use 10.0.2.2 for Android emulator localhost
+  static const String kBase = 'https://mangocodehive.xyz'; // Deployed server
   static const String kAuthPrefix = '/api'; // <— this is the correct mount
 
   static Uri _u(String path) => Uri.parse('$kBase$kAuthPrefix$path');
@@ -28,6 +28,24 @@ class Api {
       final sp = await SharedPreferences.getInstance();
       await sp.setString('token', data['data']['token']);
       await sp.setString('userName', userName); // Store username for profile access
+      
+      // Fetch user profile to get profile picture
+      try {
+        final profileResp = await getProfileInfo(userName: userName);
+        if (profileResp['status'] == 200 && profileResp['data']['data'] != null) {
+          final profileData = profileResp['data']['data'];
+          final userInfo = profileData['userInfo'];
+          final profilePicUrl = userInfo?['userProfilePic'];
+          if (profilePicUrl != null && profilePicUrl.isNotEmpty) {
+            await sp.setString('profilePicture', profilePicUrl);
+          } else {
+            await sp.remove('profilePicture');
+          }
+        }
+      } catch (e) {
+        // If profile fetch fails, continue with login - profile picture is not critical
+        print('Failed to fetch profile picture: $e');
+      }
     }
     return {'status': res.statusCode, 'data': data};
   }
@@ -220,7 +238,14 @@ class Api {
       },
       body: jsonEncode(body),
     );
-    return {'status': res.statusCode, 'data': _safeJson(res.body)};
+    final data = _safeJson(res.body);
+    
+    // Update token if provided
+    if (res.statusCode == 200 && data['data'] != null && data['data']['refreshedToken'] != null) {
+      await sp.setString('token', data['data']['refreshedToken']);
+    }
+    
+    return {'status': res.statusCode, 'data': data};
   }
 
   // Comments
