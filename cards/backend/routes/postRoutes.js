@@ -172,11 +172,25 @@ router.put('/updatePost', authenticateToken, async (req, res) => {
             { returnDocument: 'after' }
         );
 
-        const data = {
-            post: result
-        };
+        // Convert S3 keys to URLs
+        result.imageURLs = null;
+        const imageURLs = [];
+        if (Array.isArray(result.images) && result.images.length > 0) {
+            for (const image of result.images) {
+                if (image.key) {
+                    const imageURL = await grabURL(image.key);
+                    if (imageURL == null) {
+                        return responseJSON(res, false, { code: 'AWS error' }, 'Failed to grab image URL', 500);
+                    }
+                    imageURLs.push(imageURL);
+                }
+            }
+        }
+        result.imageURLs = imageURLs;
 
-        return responseJSON(res, true, data, 'Post updated successfully!', 200);
+        const refreshedToken = refreshToken(req.user.token);
+
+        return responseJSON(res, true, { post: result, refreshedToken }, 'Post updated successfully!', 200);
     } catch (e) {
         console.error('Update post error:', e);
         return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to update post', 500);
