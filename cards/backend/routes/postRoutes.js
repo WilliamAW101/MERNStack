@@ -109,7 +109,7 @@ router.put('/updatePost', authenticateToken, async (req, res) => {
         const { postId, caption, images, difficulty, rating, location } = req.body;
 
         // Get userId from authenticated token
-        const userId = req.user.id;
+        const userId = new ObjectId(req.user.id);
 
         // Validate required fields
         if (!postId) {
