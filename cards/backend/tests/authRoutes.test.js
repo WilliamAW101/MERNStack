@@ -230,10 +230,20 @@ describe('POST /api/changePassword', () => {
             createdAt: new Date(),
         });
 
+        // First verify the reset code to obtain the user id
+        const codeRes = await request(app)
+            .post('/api/checkCode')
+            .send({ code: resetCode });
+
+        expect(codeRes.status).toBe(200);
+        expect(codeRes.body.success).toBe(true);
+
+        const { id } = codeRes.body.data;
+
         const res = await request(app)
             .post('/api/changePassword')
             .send({
-                code: resetCode,
+                id,
                 newPassword: 'NewSecurePass2!',
                 samePassword: 'NewSecurePass2!',
             });
@@ -250,7 +260,7 @@ describe('POST /api/changePassword', () => {
         const res = await request(app)
             .post('/api/changePassword')
             .send({
-                code: 'anycode',
+                id: new ObjectId().toString(),
                 newPassword: 'one',
                 samePassword: 'two',
             });
@@ -478,7 +488,7 @@ describe('GET /api/personalPosts', () => {
 
         const now = new Date();
         await db.collection('post').insertOne({
-            userId: userId, // stored as string to match route query
+            userId: new ObjectId(userId),
             caption: 'Profile post',
             difficulty: 2,
             rating: 3,
@@ -523,7 +533,7 @@ describe('GET /api/getProfileInfo', () => {
 
         await db.collection('post').insertMany([
             {
-                userId: userId,
+                userId: new ObjectId(userId),
                 caption: 'Post 1',
                 difficulty: 1,
                 rating: 2,
@@ -534,7 +544,7 @@ describe('GET /api/getProfileInfo', () => {
                 commentCount: 0,
             },
             {
-                userId: userId,
+                userId: new ObjectId(userId),
                 caption: 'Post 2',
                 difficulty: 2,
                 rating: 3,
@@ -559,13 +569,13 @@ describe('GET /api/getProfileInfo', () => {
     });
 });
 
-describe('POST /api/changeProfileInfo', () => {
+describe('PUT /api/changeProfileInfo', () => {
     it('updates profile fields for an authenticated user', async () => {
         const { token, userId, userDoc } = await createVerifiedUserWithToken({ userName: 'changeProfileUser' });
         const db = await connectToDatabase();
 
         const res = await request(app)
-            .post('/api/changeProfileInfo')
+            .put('/api/changeProfileInfo')
             .set('Authorization', `Bearer ${token}`)
             .send({
                 userName: userDoc.userName,
@@ -776,7 +786,7 @@ describe('GET /api/getPost', () => {
 
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
-        expect(res.body.data.post.caption).toBe('Test post');
+        expect(res.body.data.caption).toBe('Test post');
         expect(res.body.data.comments.length).toBe(1);
         expect(res.body.data.likes.length).toBe(1);
         expect(res.body.data.profileImageURL).toBe('https://example.com/signed');
