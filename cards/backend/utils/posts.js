@@ -13,6 +13,10 @@ const grabPosts = async (res, req, posts, db) => {
     for (let post of posts) {
         const newUserID = new ObjectId(post.userId); //don't care, it works
         const user = await userCollection.findOne({ _id: newUserID });
+        if (!user) {
+            console.warn(`Post ${post._id} references non-existent user ${post.userId}`);
+            continue; // Skip to next post
+        }
         post.username = user.userName;
         const comments = await commentsCollection.find({ postId: post._id }).sort({ timestamp: -1 }).limit(20).toArray();
         
