@@ -15,64 +15,66 @@ const {
 const {
     getCommentImageURL
 } = require('../utils/posts.js');
+const {
+    sendNotification
+} = require('../utils/notifs.js');
 
 router.post('/addPost', authenticateToken, async (req, res) => {
-  // Payload in: { caption, difficulty, rating, images?: [{ key, type }], location? }
-  // Payload out: { postId, timestamp, error }
-  try {
-    const { caption, difficulty, rating, images, location } = req.body;
-
-    // auth
-    const userId = new ObjectId(req.user.id);
-
-    // basic validation
-    if (!caption) return res.status(400).json({ error: 'Caption is required' });
-    if (difficulty === undefined || difficulty === null)
-      return res.status(400).json({ error: 'Difficulty is required' });
-    if (rating === undefined || rating === null)
-      return res.status(400).json({ error: 'Rating is required' });
-
-    if (typeof difficulty !== 'number' || difficulty < 0)
-      return res.status(400).json({ error: 'Difficulty must be a non-negative number' });
-    if (typeof rating !== 'number' || rating < 0)
-      return res.status(400).json({ error: 'Rating must be a non-negative number' });
-
-    // sanitize images: keep only valid S3 keys and type (image|video)
-    const safeImages = Array.isArray(images)
-      ? images
-          .filter(m => m && typeof m.key === 'string' && m.key.trim().length > 0)
-          .map(m => ({
-            provider: 's3',
-            key: m.key,
-            type: m.type === 'video' ? 'video' : 'image'
-          }))
-      : null;
-
-    const db = await connectToDatabase();
-    const collection = db.collection('post');
-
-    const timestamp = new Date();
-
-    const newPost = {
-      userId,
-      caption,
-      difficulty,
-      rating,
-      images: safeImages,         // e.g., [{ provider:'s3', key:'posts/uid/uuid.jpg', type:'image' }]
-      location: location || null,
-      timestamp,
-      likeCount: 0,
-      commentCount: 0,
-    };
-
-    const result = await collection.insertOne(newPost);
-
-        const data = {
+    try {
+        const { caption, difficulty, rating, images, location } = req.body;
+        const userId = new ObjectId(req.user.id);
+        
+        // Validation
+        if (!caption) return res.status(400).json({ error: 'Caption is required' });
+        if (difficulty === undefined || difficulty === null)
+            return res.status(400).json({ error: 'Difficulty is required' });
+        if (rating === undefined || rating === null)
+            return res.status(400).json({ error: 'Rating is required' });
+        if (typeof difficulty !== 'number' || difficulty < 0)
+            return res.status(400).json({ error: 'Difficulty must be a non-negative number' });
+        if (typeof rating !== 'number' || rating < 0)
+            return res.status(400).json({ error: 'Rating must be a non-negative number' });
+        
+        // Sanitize images
+        const safeImages = Array.isArray(images)
+            ? images
+                .filter(m => m && typeof m.key === 'string' && m.key.trim().length > 0)
+                .map(m => ({
+                    provider: 's3',
+                    key: m.key,
+                    type: m.type === 'video' ? 'video' : 'image'
+                }))
+            : null;
+        
+        const db = await connectToDatabase();
+        const timestamp = new Date();
+        
+        // Parallel: Insert post + Get user data
+        const [result, user] = await Promise.all([
+            db.collection('post').insertOne({
+                userId,
+                caption,
+                difficulty,
+                rating,
+                images: safeImages,
+                location: location || null,
+                timestamp,
+                likeCount: 0,
+                commentCount: 0,
+            }),
+            db.collection('user').findOne({ _id: userId }, { projection: { userName: 1 } })
+        ]);
+        
+        if (!user) {
+            return responseJSON(res, false, { code: 'User not found' }, 'User not found', 404);
+        }
+        
+        // Respond immediately
+        return responseJSON(res, true, {
             postId: result.insertedId,
             timestamp
-        };
-
-        return responseJSON(res, true, data, 'Post created successfully!', 201);
+        }, 'Post created successfully!', 201);
+        
     } catch (e) {
         console.error('Add post error:', e);
         return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to create post', 500);
@@ -110,7 +112,7 @@ router.put('/updatePost', authenticateToken, async (req, res) => {
             return responseJSON(res, false, { code: 'Not Found' }, 'Post not found', 404);
         }
 
-        if (post.userId !== userId) {
+        if (post.userId !== userId.toString()) {
             return responseJSON(res, false, { code: 'Forbidden' }, 'You do not have permission to update this post', 403);
         }
 
@@ -187,7 +189,7 @@ router.delete('/deletePost', authenticateToken, async (req, res) => {
     // Payload sending: success, data: { deletedCount }, message
     try {
         const { postId } = req.body;
-        
+
         // Get userId from authenticated token
         const userId = req.user.id;
 
@@ -195,8 +197,6 @@ router.delete('/deletePost', authenticateToken, async (req, res) => {
         if (!postId) {
             return responseJSON(res, false, { code: 'Bad Request' }, 'Post ID is required', 400);
         }
-
-
 
         const db = await connectToDatabase();
         const postCollection = db.collection('post');
@@ -286,7 +286,7 @@ router.get('/getPost', authenticateToken, async (req, res) => {
             .find({ post_id: postObjectId })
             .limit(20).toArray();
 
-        
+
         const user = await userCollection.findOne({ _id: new ObjectId(post.userId) });
         if (user.profilePicture && user.profilePicture.key)
             profileImageURL = await grabURL(user.profilePicture.key);
@@ -294,14 +294,26 @@ router.get('/getPost', authenticateToken, async (req, res) => {
             profileImageURL = null;
         post.userProfilePic = profileImageURL;
 
-        const data = {
-            post,
-            profileImageURL,
-            comments,
-            likes
-        };
+        post.imageURLs = null;
+        const imageURLs = [];
+        if (Array.isArray(post.images) && post.images.length > 0) {
+            for (const image of post.images) {
+                if (image.key) {
+                    const imageURL = await grabURL(image.key);
+                    if (imageURL == null) {
+                        responseJSON(res, false, { code: 'AWS error' }, 'Failed to grab image URL ', 500);
+                        return null;
+                    }
+                    imageURLs.push(imageURL);
+                }
+            }
+        }
+        post.imageURLs = imageURLs;
+        post.profileImageURL = profileImageURL;
+        post.comments = comments;
+        post.likes = likes;
 
-        return responseJSON(res, true, data, 'Post retrieved successfully!', 200);
+        return responseJSON(res, true, post, 'Post retrieved successfully!', 200);
     } catch (e) {
         console.error('Get post error:', e);
         return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to retrieve post', 500);
@@ -369,9 +381,26 @@ router.post('/addComment', authenticateToken, async (req, res) => {
             timestamp
         };
 
+        // send notification
+        if (post.userId != userId.toString()) { // dont sent notif if it is user's own post
+            const notif = req.app.get('socketio');
+            const notificationData = {
+                type: 'Comment',
+                message: `${userName} made a comment on your post`,
+                data: {
+                    postId: post._id,
+                    commentorId: userId,
+                    commentorUsername: userName,
+                    commentId: result.insertedId,
+                    timestamp: new Date()
+                }
+            }
+            await sendNotification(notif, notificationData, db, post.userId.toString(), false);
+        }
+
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 
-        return responseJSON(res, true, { data,  refreshedToken },  'Comment added successfully!', 201);
+        return responseJSON(res, true, { data, refreshedToken }, 'Comment added successfully!', 201);
     } catch (e) {
         console.error('Add comment error:', e);
         return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to add comment', 500);
@@ -397,7 +426,7 @@ router.delete('/deleteComment', authenticateToken, async (req, res) => {
         if (result.deletedCount == 0) {
             return responseJSON(res, false, { code: 'Not Found' }, 'Comment not found and failed to delete', 404);
         }
-        
+
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 
         return responseJSON(res, true, { refreshedToken }, 'Comment deleted successfully!', 201);
@@ -421,8 +450,8 @@ router.post('/changeComment', authenticateToken, async (req, res) => {
 
         await commentCollection.updateOne(
             { _id: ID },
-            {  
-                $set: { 
+            {
+                $set: {
                     commentText: text,
                     updatedAt: new Date()
                 }
@@ -446,7 +475,6 @@ router.post('/likePost', authenticateToken, async (req, res) => {
 
         // Get userId and userName from authenticated token
         const userId = req.user.id;
-        const userName = req.user.userName;
 
         // Validate required fields
         if (!postId) {
@@ -514,6 +542,25 @@ router.post('/likePost', authenticateToken, async (req, res) => {
                 { _id: postObjectId },
                 { $inc: { likeCount: 1 } }
             );
+
+            // send notification
+            if (post.userId != userObjectId.toString()) { // dont sent notif if it is user's own post
+                const notif = req.app.get('socketio');
+                const userCollection = db.collection('user');
+
+                const user = await userCollection.findOne({ _id: post.userId });
+                const notificationData = {
+                    type: 'Like',
+                    message: `${req.user.userName} liked your post`,
+                    data: {
+                        postId: postId,
+                        LikerId: req.user.id,
+                        LikerUsername: req.user.userName,
+                        timestamp: new Date()
+                    }
+                }
+                await sendNotification(notif, notificationData, db, post.userId.toString(), false);
+            }
 
             isLiked = true;
             message = 'Post liked successfully!';

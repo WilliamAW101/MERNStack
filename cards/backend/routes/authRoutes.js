@@ -291,7 +291,7 @@ router.post('/changePassword', async (req, res) => {
     } else {
       console.log("Password successfully updated!");
     }
-    responseJSON(res, true, ret, 'Password Change Success!', 201);
+    responseJSON(res, true, 'Password has been changed', 'Password Change Success!', 201);
 });
 
 
