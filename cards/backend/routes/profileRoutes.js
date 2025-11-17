@@ -162,8 +162,6 @@ router.put('/changeProfileInfo', authenticateToken, async (req, res) => {
         // Update the timestamp
         updateFields.updatedAt = new Date();
 
-        updateFields.profilePicture = null;
-
         // Update the user
         const result = await userCollection.updateOne(
             { _id: new ObjectId(req.user.id) },
