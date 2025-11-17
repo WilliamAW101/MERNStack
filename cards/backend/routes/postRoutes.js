@@ -128,19 +128,20 @@ router.put('/updatePost', authenticateToken, async (req, res) => {
             updateFields.caption = caption.trim();
         }
 
-        if (images !== undefined) {
-            // Sanitize images: keep only valid S3 keys and type (image|video)
-            const safeImages = Array.isArray(images)
-                ? images
-                    .filter(m => m && typeof m.key === 'string' && m.key.trim().length > 0)
-                    .map(m => ({
-                        provider: 's3',
-                        key: m.key,
-                        type: m.type === 'video' ? 'video' : 'image'
-                    }))
-                : null;
-            updateFields.images = safeImages;
-        }
+        // if (images !== undefined) {
+        //     // Sanitize images: keep only valid S3 keys and type (image|video)
+        //     const safeImages = Array.isArray(images)
+        //         ? images
+        //             .filter(m => m && typeof m.key === 'string' && m.key.trim().length > 0)
+        //             .map(m => ({
+        //                 provider: 's3',
+        //                 key: m.key,
+        //                 type: m.type === 'video' ? 'video' : 'image'
+        //             }))
+        //         : null;
+        //     updateFields.images = safeImages;
+        // }
+
 
         if (difficulty !== undefined) {
             if (typeof difficulty !== 'number' || difficulty < 0) {
