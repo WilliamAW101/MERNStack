@@ -127,7 +127,7 @@ router.put('/updatePost', authenticateToken, async (req, res) => {
             }
             updateFields.caption = caption.trim();
         }
-
+        console.log('Images received for update:', images);
         const safeImages = Array.isArray(images)
             ? images
                 .filter(m => m && typeof m.key === 'string' && m.key.trim().length > 0)
