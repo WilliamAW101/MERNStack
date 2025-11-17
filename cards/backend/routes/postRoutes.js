@@ -138,7 +138,6 @@ router.put('/updatePost', authenticateToken, async (req, res) => {
                 }))
             : null;
         updateFields.images = safeImages;
-        console.log('Sanitized images for update:', safeImages);
         
         if (difficulty !== undefined) {
             if (typeof difficulty !== 'number' || difficulty < 0) {
@@ -166,11 +165,20 @@ router.put('/updatePost', authenticateToken, async (req, res) => {
         // Add updatedAt timestamp
         updateFields.updatedAt = new Date();
 
+        // Update the post
+        const result = await collection.findOneAndUpdate(
+            { _id: postObjectId },
+            { $set: updateFields },
+            { returnDocument: 'after' }
+        );
+
         // Convert S3 keys to URLs
+        result.imageURLs = null;
         const imageURLs = [];
-        if (Array.isArray(safeImages) && safeImages.length > 0) {
-            for (const image of safeImages) {
+        if (Array.isArray(result.images) && result.images.length > 0) {
+            for (const image of result.images) {
                 if (image.key) {
+                    console.log('Grabbing URL for image key:', image.key);
                     const imageURL = await grabURL(image.key);
                     if (imageURL == null) {
                         return responseJSON(res, false, { code: 'AWS error' }, 'Failed to grab image URL', 500);
@@ -179,10 +187,11 @@ router.put('/updatePost', authenticateToken, async (req, res) => {
                 }
             }
         }
-        if (imageURLs .length > 0)
-            updateFields.imageURLs = imageURLs;
+        result.imageURLs = imageURLs;
 
-        return responseJSON(res, true, updateFields, 'Post updated successfully!', 200);
+        const refreshedToken = refreshToken(req.user.token);
+
+        return responseJSON(res, true, { post: result, refreshedToken }, 'Post updated successfully!', 200);
     } catch (e) {
         console.error('Update post error:', e);
         return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to update post', 500);
