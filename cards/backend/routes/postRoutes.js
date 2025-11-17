@@ -187,7 +187,7 @@ router.delete('/deletePost', authenticateToken, async (req, res) => {
     // Payload sending: success, data: { deletedCount }, message
     try {
         const { postId } = req.body;
-
+        
         // Get userId from authenticated token
         const userId = req.user.id;
 
@@ -195,6 +195,8 @@ router.delete('/deletePost', authenticateToken, async (req, res) => {
         if (!postId) {
             return responseJSON(res, false, { code: 'Bad Request' }, 'Post ID is required', 400);
         }
+
+
 
         const db = await connectToDatabase();
         const postCollection = db.collection('post');
@@ -215,7 +217,7 @@ router.delete('/deletePost', authenticateToken, async (req, res) => {
             return responseJSON(res, false, { code: 'Not Found' }, 'Post not found', 404);
         }
 
-        if (post.userId !== userId) {
+        if (post.userId.toString() !== userId.toString()) {
             return responseJSON(res, false, { code: 'Forbidden' }, 'You do not have permission to delete this post', 403);
         }
 

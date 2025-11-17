@@ -51,7 +51,7 @@ router.get('/personalPosts', authenticateToken, async (req, res) => {
 
         let query = {
             timestamp: { $lt: new Date() }, // current time
-            userId: user._id.toString()
+            userId: user._id  // Use ObjectId instead of string
         };
         if (lastTimestamp && !isNaN(Date.parse(lastTimestamp))) {
             query.timestamp = { $lt: new Date(lastTimestamp) };
@@ -66,7 +66,7 @@ router.get('/personalPosts', authenticateToken, async (req, res) => {
             return;
         
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
-        
+        console.log(posts);
         responseJSON(res, true, { posts, nextCursor, refreshedToken}, 'profile endpoint success', 200);
     } catch (e) {
         error = e.toString();
@@ -99,7 +99,7 @@ router.get('/getProfileInfo', authenticateToken, async (req, res) => {
         }
 
         const numberOfTotalPosts = await postCollection.countDocuments({
-            userId: userInfo._id.toString()
+            userId: userInfo._id  // Use ObjectId instead of string
         });
         
         if (userInfo.profilePicture && userInfo.profilePicture.key)
