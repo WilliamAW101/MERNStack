@@ -238,6 +238,8 @@ export default function CommentModal({
             maxWidth={false}
             disableScrollLock={false}
             scroll="paper"
+            disableAutoFocus
+            disableEnforceFocus
             PaperProps={{
                 sx: {
                     width: { xs: '100%', md: '90vw' },
@@ -744,6 +746,8 @@ export default function CommentModal({
                 onClose={handleCancelDelete}
                 maxWidth="xs"
                 fullWidth
+                disableAutoFocus
+                disableEnforceFocus
                 PaperProps={{
                     sx: {
                         borderRadius: 3,

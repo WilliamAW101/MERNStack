@@ -195,6 +195,8 @@ export default function EditPostModal({ open, onClose, onPostUpdated, post }: Ed
             open={open}
             onClose={handleClose}
             maxWidth="sm"
+            disableAutoFocus
+            disableEnforceFocus
             fullWidth
             PaperProps={{
                 sx: {

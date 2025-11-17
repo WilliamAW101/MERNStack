@@ -73,11 +73,37 @@ export default function Profile({ userName }: { userName: string }) {
 
     // Load profile info on mount and scroll to top
     useEffect(() => {
+        // Disable browser's automatic scroll restoration
+        if ('scrollRestoration' in window.history) {
+            window.history.scrollRestoration = 'manual';
+        }
+
+        // Force scroll to top immediately
         window.scrollTo(0, 0);
         setIsInitialLoad(true);
         loadProfileInfo();
         loadPosts();
+
+        // Cleanup: restore scroll restoration on unmount
+        return () => {
+            if ('scrollRestoration' in window.history) {
+                window.history.scrollRestoration = 'auto';
+            }
+        };
     }, [userName]);
+
+    // Force scroll to top during initial load to prevent layout shift jumps
+    useEffect(() => {
+        if (loading && isInitialLoad) {
+            const intervalId = setInterval(() => {
+                if (window.scrollY > 0) {
+                    window.scrollTo(0, 0);
+                }
+            }, 50);
+
+            return () => clearInterval(intervalId);
+        }
+    }, [loading, isInitialLoad]);
 
     // Cleanup avatar preview URL on unmount
     useEffect(() => {
@@ -89,20 +115,25 @@ export default function Profile({ userName }: { userName: string }) {
     }, [avatarPreview]);
 
     // Infinite scroll for posts
-    // Only enable after initial load completes
+    // Only enable after initial load completes and layout is stable
     useEffect(() => {
-        // Don't set up observer during initial load
-        if (isInitialLoad || loading) {
+        if (isInitialLoad) return;
+
+        // Don't set up observer if no more posts or if currently loading
+        if (loading || loadingMore || !nextCursor) {
             return;
         }
 
         const observer = new IntersectionObserver(
             (entries) => {
-                if (entries[0].isIntersecting && nextCursor && !loadingMore) {
+                if (entries[0].isIntersecting && nextCursor && !loadingMore && !loading) {
                     loadPosts(nextCursor);
                 }
             },
-            { threshold: 0.1 }
+            {
+                threshold: 0.1,
+                rootMargin: '100px' // Start loading when within 100px of the target
+            }
         );
 
         const currentTarget = observerTarget.current;
@@ -114,6 +145,7 @@ export default function Profile({ userName }: { userName: string }) {
             if (currentTarget) {
                 observer.unobserve(currentTarget);
             }
+            observer.disconnect();
         };
     }, [nextCursor, loadingMore, loading, isInitialLoad]);
 
@@ -151,7 +183,12 @@ export default function Profile({ userName }: { userName: string }) {
                 });
             } else {
                 setPosts(result.posts);
-                setIsInitialLoad(false);
+
+                // Delay enabling infinite scroll until layout is stable
+                // Increased delay to allow images to load and layout to stabilize
+                setTimeout(() => {
+                    setIsInitialLoad(false);
+                }, 500);
             }
 
             setNextCursor(result.nextCursor);
@@ -214,11 +251,6 @@ export default function Profile({ userName }: { userName: string }) {
             const fileExtension = file.name.split('.').pop()?.toLowerCase() as 'jpg' | 'jpeg' | 'png' | 'webp' | 'heic' || 'jpg';
 
             // Step 1: Get upload URL and key from backend
-            // NOTE: The backend /uploads/url generates keys like "posts/{userId}/{uuid}.{ext}"
-            // For profile pictures, you may need to modify the backend to:
-            // - Accept a "type" parameter (e.g., type: 'profile' vs 'post')
-            // - Generate keys like "profile/{userId}/{uuid}.{ext}" for profile pictures
-            // OR create a separate endpoint like /uploads/profile-url
             const uploadUrlResponse = await getUploadUrl({
                 contentType: file.type as any,
                 ext: fileExtension,
@@ -231,9 +263,24 @@ export default function Profile({ userName }: { userName: string }) {
                 throw new Error('Failed to get upload URL or key from server');
             }
 
+            console.log('📝 Got upload URL and key:', { uploadUrl, key });
+
+            // Step 2: Upload file to S3 using presigned URL
+            const uploadResponse = await fetch(uploadUrl, {
+                method: 'PUT',
+                body: file,
+                headers: {
+                    'Content-Type': file.type,
+                },
+            });
+
+            if (!uploadResponse.ok) {
+                throw new Error(`Failed to upload file to S3: ${uploadResponse.statusText}`);
+            }
+
+            console.log('✅ File uploaded to S3 successfully');
+
             // Step 3: Update profile with the generated key
-            // NOTE: uploadProfilePictureKey validates that key starts with "profile/{userId}/"
-            // Make sure the key from Step 1 matches this format
             const updateResponse = await uploadProfilePictureKey(key);
 
             if (updateResponse.success) {
@@ -471,18 +518,14 @@ export default function Profile({ userName }: { userName: string }) {
                                             onClick={handleOpenEditModal}
                                             sx={{
                                                 textTransform: 'none',
-                                                bgcolor: '#efefef',
-                                                color: '#000',
+                                                bgcolor: 'black',
+                                                color: 'white',
                                                 fontWeight: 600,
                                                 fontSize: '0.875rem',
                                                 px: 2,
                                                 py: 0.5,
                                                 boxShadow: 'none',
                                                 borderRadius: 2,
-                                                '&:hover': {
-                                                    bgcolor: '#e0e0e0',
-                                                    boxShadow: 'none',
-                                                },
                                             }}
                                         >
                                             Edit profile
@@ -710,9 +753,6 @@ export default function Profile({ userName }: { userName: string }) {
                                 {/* End of posts message */}
                                 {!nextCursor && posts.length > 0 && (
                                     <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                                        <Typography variant="body2" sx={{ color: '#8e8e8e' }}>
-                                            You&apos;ve reached the end! 🎉
-                                        </Typography>
                                     </Box>
                                 )}
                             </>
@@ -723,6 +763,7 @@ export default function Profile({ userName }: { userName: string }) {
 
             {/* Edit Profile Modal */}
             <EditProfileModal
+                userName={userName}
                 open={openEditModal}
                 onClose={handleCloseEditModal}
                 userInfo={userInfo}

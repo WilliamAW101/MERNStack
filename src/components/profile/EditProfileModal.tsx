@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
     Dialog,
     DialogTitle,
@@ -10,17 +10,10 @@ import {
     Button,
     Box,
     Typography,
-    Avatar,
-    IconButton,
     CircularProgress,
 } from '@mui/material';
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import { useToast } from '@/context/toast';
-import {
-    changeProfileInfo,
-    getUploadUrl,
-} from '@/services/api.service';
+import { changeProfileInfo } from '@/services/api.service';
 import SignatureLogo from '../common/SignatureLogo';
 
 interface UserInfo {
@@ -36,6 +29,7 @@ interface UserInfo {
 }
 
 interface EditProfileModalProps {
+    userName: string;
     open: boolean;
     onClose: () => void;
     userInfo: UserInfo | null;
@@ -54,11 +48,7 @@ export default function EditProfileModal({
         phone: userInfo?.phone || '',
         profileDescription: userInfo?.profileDescription || '',
     });
-    const [uploading, setUploading] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [previewAvatar, setPreviewAvatar] = useState<string | null>(userInfo?.profilePicture || null);
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const toast = useToast();
 
     // Update form data when userInfo changes
@@ -70,7 +60,6 @@ export default function EditProfileModal({
                 phone: userInfo.phone || '',
                 profileDescription: userInfo.profileDescription || '',
             });
-            setPreviewAvatar(userInfo.profilePicture);
         }
     }, [userInfo]);
 
@@ -81,51 +70,9 @@ export default function EditProfileModal({
         });
     };
 
-    const handleAvatarClick = () => {
-        fileInputRef.current?.click();
-    };
-
-    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        // Validate file type
-        if (!file.type.startsWith('image/')) {
-            toast.error('Please select an image file');
-            return;
-        }
-
-        // Validate file size (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            toast.error('Image size must be less than 5MB');
-            return;
-        }
-
-        // Create preview
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            setPreviewAvatar(reader.result as string);
-        };
-        reader.readAsDataURL(file);
-
-        setSelectedFile(file);
-    };
-
     const handleSave = async () => {
         setSaving(true);
         try {
-            // Upload avatar first if a new one was selected
-            if (selectedFile) {
-                setUploading(true);
-                const ext = selectedFile.name.split('.').pop()?.toLowerCase() || 'jpg';
-                const uploadUrlResponse = await getUploadUrl({
-                    contentType: selectedFile.type as any,
-                    ext: ext as any,
-                });
-
-                setUploading(false);
-            }
-
             // Update profile info
             const response = await changeProfileInfo(formData);
 
@@ -133,20 +80,16 @@ export default function EditProfileModal({
                 onProfileUpdated(response.data.updatedUser);
                 toast.success('Profile updated successfully!');
                 onClose();
-                setSelectedFile(null);
             }
         } catch (error) {
             console.error('Error updating profile:', error);
             toast.error('Failed to update profile');
         } finally {
             setSaving(false);
-            setUploading(false);
         }
     };
 
     const handleClose = () => {
-        setSelectedFile(null);
-        setPreviewAvatar(userInfo?.profilePicture || null);
         onClose();
     };
 
@@ -155,6 +98,8 @@ export default function EditProfileModal({
             open={open}
             onClose={handleClose}
             maxWidth="sm"
+            disableAutoFocus
+            disableEnforceFocus
             fullWidth
             PaperProps={{
                 sx: {
@@ -181,79 +126,6 @@ export default function EditProfileModal({
             </DialogTitle>
             <DialogContent sx={{ pt: 3 }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, py: 1 }}>
-                    {/* Avatar Section */}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                        <Box sx={{ position: 'relative' }}>
-                            {previewAvatar ? (
-                                <Avatar
-                                    src={previewAvatar}
-                                    sx={{
-                                        width: 100,
-                                        height: 100,
-                                        cursor: 'pointer',
-                                    }}
-                                    onClick={handleAvatarClick}
-                                />
-                            ) : (
-                                <Box
-                                    onClick={handleAvatarClick}
-                                    sx={{
-                                        width: 100,
-                                        height: 100,
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                    }}
-                                >
-                                    <AccountCircleIcon
-                                        sx={{
-                                            width: 100,
-                                            height: 100,
-                                            color: '#262626',
-                                        }}
-                                    />
-                                </Box>
-                            )}
-                            {uploading && (
-                                <CircularProgress
-                                    size={24}
-                                    sx={{
-                                        position: 'absolute',
-                                        top: '50%',
-                                        left: '50%',
-                                        marginTop: '-12px',
-                                        marginLeft: '-12px',
-                                    }}
-                                />
-                            )}
-                        </Box>
-                        <Button
-                            variant="outlined"
-                            startIcon={<PhotoCameraIcon />}
-                            onClick={handleAvatarClick}
-                            disabled={uploading || saving}
-                            sx={{
-                                textTransform: 'none',
-                                borderColor: '#dbdbdb',
-                                color: '#0095f6',
-                                fontWeight: 600,
-                                '&:hover': {
-                                    borderColor: '#0095f6',
-                                    bgcolor: 'rgba(0, 149, 246, 0.05)',
-                                },
-                            }}
-                        >
-                            {selectedFile ? 'Change Photo' : 'Upload Photo'}
-                        </Button>
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={handleFileSelect}
-                            style={{ display: 'none' }}
-                        />
-                    </Box>
 
                     {/* Form Fields */}
                     <Box>
@@ -361,7 +233,7 @@ export default function EditProfileModal({
                 <Button
                     onClick={handleSave}
                     variant="contained"
-                    disabled={saving || uploading}
+                    disabled={saving}
                     sx={{
                         textTransform: 'none',
                         bgcolor: '#0095f6',

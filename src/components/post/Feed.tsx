@@ -8,17 +8,21 @@ import {
     Typography,
     Avatar,
     Button,
+    IconButton,
     Stack,
     CircularProgress,
     Fab,
 } from '@mui/material';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import LogoutIcon from '@mui/icons-material/Logout';
 import Post from './Post';
 import AppLayout from '../layout/AppLayout';
 import CreatePostModal from './CreatePostModal';
 import { useToast } from '@/context/toast';
-import { fetchHomePosts } from '@/services/api.service';
+import { fetchHomePosts, getProfileInfo } from '@/services/api.service';
 import { Post as PostType } from '@/types/post.types';
+import { useUser } from '@/context/user/UserContext';
+import { useRouter } from 'next/navigation';
 
 // Mock data for suggested hiking buddies
 const suggestedHikingBuddies = [
@@ -36,14 +40,72 @@ export default function Feed({ isConnected, setIsConnected }: { isConnected: boo
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [scrollLocked, setScrollLocked] = useState(false);
+    const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
     const toast = useToast();
     const observerTarget = useRef<HTMLDivElement>(null);
+    const { user, logout } = useUser();
+    const router = useRouter();
 
-    // Scroll to top on mount and initial load
+    // Prevent browser scroll restoration and load posts
     useEffect(() => {
+        // Disable browser's automatic scroll restoration
+        if ('scrollRestoration' in window.history) {
+            window.history.scrollRestoration = 'manual';
+        }
+
+        // Force scroll to top immediately
         window.scrollTo(0, 0);
+
+        // Load posts
         loadPosts(undefined, true);
+
+        // Cleanup: restore scroll restoration on unmount
+        return () => {
+            if ('scrollRestoration' in window.history) {
+                window.history.scrollRestoration = 'auto';
+            }
+        };
     }, []);
+
+    const userName = user?.userName;
+
+    // Force scroll to top during initial load to prevent layout shift jumps
+    useEffect(() => {
+        if (loading && isInitialLoad) {
+            const intervalId = setInterval(() => {
+                if (window.scrollY > 0) {
+                    window.scrollTo(0, 0);
+                }
+            }, 50);
+
+            return () => clearInterval(intervalId);
+        }
+    }, [loading, isInitialLoad]);
+
+    // Fetch current user's profile info
+    useEffect(() => {
+        const loadUserProfile = async () => {
+            if (!userName) return;
+
+            try {
+                const response = await getProfileInfo(userName);
+                if (response.success) {
+                    setCurrentUserProfile(response.data.userInfo);
+                }
+            } catch (error) {
+                console.error('Failed to load user profile:', error);
+            }
+        };
+
+        loadUserProfile();
+    }, [userName]);
+
+    const handleLogout = () => {
+        logout();
+        router.refresh();
+    };
+
 
     const loadPosts = async (cursor?: string, isInitial: boolean = false) => {
         try {
@@ -67,7 +129,12 @@ export default function Feed({ isConnected, setIsConnected }: { isConnected: boo
             } else {
                 // Replace posts
                 setPosts(result.posts);
-                setIsInitialLoad(false);
+
+                // Delay enabling infinite scroll until layout is stable
+                // Increased delay to allow images to load and layout to stabilize
+                setTimeout(() => {
+                    setIsInitialLoad(false);
+                }, 500);
 
                 // Scroll to top when refreshing
                 if (!isInitial) {
@@ -87,20 +154,26 @@ export default function Feed({ isConnected, setIsConnected }: { isConnected: boo
     };
 
     // Infinite scroll with Intersection Observer
-    // Only enable after initial load completes
+    // Only enable after initial load completes and layout is stable
     useEffect(() => {
-        // Don't set up observer during initial load
-        if (isInitialLoad || loading) {
+        // 🚫 Stop early if still in initial load or scroll is locked (during refresh)
+        if (isInitialLoad || scrollLocked) return;
+
+        // Don't set up observer if no more posts or if currently loading
+        if (loading || loadingMore || !nextCursor) {
             return;
         }
 
         const observer = new IntersectionObserver(
             (entries) => {
-                if (entries[0].isIntersecting && nextCursor && !loadingMore) {
+                if (entries[0].isIntersecting && nextCursor && !loadingMore && !loading) {
                     loadPosts(nextCursor);
                 }
             },
-            { threshold: 0.1 }
+            {
+                threshold: 0.1,
+                rootMargin: '100px' // Start loading when within 100px of the target
+            }
         );
 
         const currentTarget = observerTarget.current;
@@ -112,11 +185,15 @@ export default function Feed({ isConnected, setIsConnected }: { isConnected: boo
             if (currentTarget) {
                 observer.unobserve(currentTarget);
             }
+            observer.disconnect();
         };
-    }, [nextCursor, loadingMore, isInitialLoad, loading]);
+    }, [nextCursor, loadingMore, isInitialLoad, loading, scrollLocked]);
 
     const handlePostCreated = async () => {
         console.log('📝 Post created, starting refresh process...');
+
+        // Lock scroll to prevent infinite scroll from triggering
+        setScrollLocked(true);
 
         // Close modal
         setCreateModalOpen(false);
@@ -129,10 +206,19 @@ export default function Feed({ isConnected, setIsConnected }: { isConnected: boo
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         console.log('🔄 Refreshing feed...');
+        // Scroll to top to see the new post
+        window.scrollTo(0, 0);
+
         // Force a feed refresh to pull the latest posts
         await loadPosts(undefined, false);
 
         console.log('✅ Feed refreshed successfully');
+
+        // Allow scroll after layout stabilizes
+        setTimeout(() => {
+            setScrollLocked(false);
+            console.log('🔓 Scroll unlocked');
+        }, 500);
     };
 
     const handlePostUpdated = (postId: string, updatedPost: PostType) => {
@@ -217,9 +303,6 @@ export default function Feed({ isConnected, setIsConnected }: { isConnected: boo
                                 {/* End of feed message */}
                                 {!nextCursor && posts.length > 0 && (
                                     <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                                        <Typography variant="body2" sx={{ color: '#8e8e8e' }}>
-                                            You&apos;re all caught up! 🎉
-                                        </Typography>
                                     </Box>
                                 )}
                             </>
@@ -228,8 +311,73 @@ export default function Feed({ isConnected, setIsConnected }: { isConnected: boo
 
                     {/* Right Sidebar - Suggestions (hidden on mobile) */}
                     <Grid size={{ md: 4 }} sx={{ display: { xs: 'none', md: 'block' } }}>
-                        <Box sx={{ position: 'sticky', top: 80, pt: 2 }}>
-                            <Box sx={{ mb: 3 }}>
+                        <Box sx={{ position: 'sticky', top: 0, pt: 2 }}>
+                            {/* Current User Profile */}
+                            {currentUserProfile && (
+                                <Box sx={{ mb: 3 }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                            {currentUserProfile.userProfilePic ? (
+                                                <Avatar
+                                                    src={currentUserProfile.userProfilePic}
+                                                    sx={{ width: 44, height: 44 }}
+                                                />
+                                            ) : (
+                                                <AccountCircleIcon
+                                                    sx={{
+                                                        width: 48,
+                                                        height: 48,
+                                                        color: '#8e8e8e',
+                                                    }}
+                                                />
+                                            )}
+                                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                                                <Typography
+                                                    variant="body2"
+                                                    sx={{
+                                                        fontWeight: 600,
+                                                        fontSize: '0.875rem',
+                                                        color: '#262626',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        whiteSpace: 'nowrap',
+                                                    }}
+                                                >
+                                                    {currentUserProfile.userName}
+                                                </Typography>
+                                                <Typography
+                                                    variant="caption"
+                                                    sx={{
+                                                        color: '#8e8e8e',
+                                                        fontSize: '0.75rem',
+                                                        display: 'block',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        whiteSpace: 'nowrap',
+                                                    }}
+                                                >
+                                                    {currentUserProfile.profileDescription || 'No bio yet'}
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                        <IconButton
+                                            onClick={handleLogout}
+                                            size="small"
+                                            sx={{
+                                                color: '#8e8e8e',
+                                                '&:hover': {
+                                                    color: '#262626',
+                                                    bgcolor: 'rgba(0,0,0,0.04)',
+                                                },
+                                            }}
+                                        >
+                                            <LogoutIcon sx={{ fontSize: 18 }} />
+                                        </IconButton>
+                                    </Box>
+                                </Box>
+                            )}
+
+                            <Box>
                                 <Typography
                                     variant="body2"
                                     sx={{

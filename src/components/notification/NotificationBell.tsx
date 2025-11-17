@@ -18,19 +18,21 @@ import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import CloseIcon from '@mui/icons-material/Close';
-import { grabNotifications, markNotificationAsRead, markAllNotificationsAsSeen, fetchPostById } from '@/services/api.service';
+import { fetchNotifications, fetchUnseenCount, markNotificationAsRead, markAllNotificationsAsSeen, fetchPostById } from '@/services/api.service';
 import CommentModal from '../post/CommentModal';
 import { Post } from '@/types/post.types';
 import { socket } from '@/socket';
 import { useToast } from '@/context/toast';
 
-const NotificationBell = () => {
+interface NotificationBellProps {
+    onDrawerToggle?: (open: boolean) => void;
+}
+
+const NotificationBell = ({ onDrawerToggle }: NotificationBellProps) => {
     const toast = useToast();
     const [open, setOpen] = useState(false);
     const [notifications, setNotifications] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
-    const [nextCursor, setNextCursor] = useState<string | null>(null);
-    const [hasMore, setHasMore] = useState(true);
     const [unseenCount, setUnseenCount] = useState(0); // Badge count (unseen notifications)
 
     // CommentModal state
@@ -39,35 +41,57 @@ const NotificationBell = () => {
     const [loadingPost, setLoadingPost] = useState(false);
 
     const handleClick = async () => {
-        setOpen(true);
+        if (!open) {
+            // Opening bell dropdown
+            setOpen(true);
+            onDrawerToggle?.(true); // Hide sidebar
 
-        // Mark all notifications as seen when bell is clicked
-        if (unseenCount > 0) {
-            // Update UI immediately (optimistic)
-            setUnseenCount(0);
-            setNotifications(prev => prev.map(n => ({ ...n, seen: true })));
-
-            // Sync with backend
+            setLoading(true);
             try {
-                await markAllNotificationsAsSeen();
-                console.log('✅ All notifications marked as seen');
+                // 1. Fetch all notifications
+                const response = await fetchNotifications(50, 0);
+                setNotifications(response.notifications);
+                console.log('📋 Fetched notifications:', response.count);
+
+                // 2. Mark all as seen (badge disappears)
+                if (unseenCount > 0) {
+                    await markAllNotificationsAsSeen();
+                    console.log('✅ All notifications marked as seen');
+
+                    // 3. Clear badge
+                    setUnseenCount(0);
+                }
             } catch (error) {
-                console.error('Failed to mark notifications as seen:', error);
+                console.error('Failed to fetch notifications:', error);
+                toast.error('Failed to load notifications');
+            } finally {
+                setLoading(false);
             }
+        } else {
+            // Closing bell dropdown
+            handleClose();
         }
     };
 
     const handleClose = () => {
         setOpen(false);
+        onDrawerToggle?.(false); // Show sidebar
     };
 
-    // Always reload notifications when drawer opens (fresh data)
+    // Fetch unseen count on mount
     useEffect(() => {
-        if (open) {
-            loadNotifications();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open]);
+        const loadUnseenCount = async () => {
+            try {
+                const count = await fetchUnseenCount();
+                setUnseenCount(count);
+                console.log('📊 Initial unseen count:', count);
+            } catch (error) {
+                console.error('Failed to fetch unseen count:', error);
+            }
+        };
+
+        loadUnseenCount();
+    }, []);
 
     // Listen for real-time notifications via WebSocket
     useEffect(() => {
@@ -78,16 +102,14 @@ const NotificationBell = () => {
 
             // Add new notification to the top of the list (avoid duplicates)
             setNotifications(prev => {
-                // Check if notification already exists
                 const exists = prev.some(n => n._id === notification._id);
                 if (exists) {
-                    console.log('Notification already exists, skipping');
                     return prev;
                 }
                 return [notification, ...prev];
             });
 
-            // Increment unseen count (new notifications are unseen by default)
+            // Increment unseen count (new notifications have isSeen: false by default)
             setUnseenCount(prev => prev + 1);
 
             // Show toast notification
@@ -107,63 +129,25 @@ const NotificationBell = () => {
         };
     }, [toast]);
 
-    const loadNotifications = async (cursor?: string) => {
-        if (loading) return;
-
-        setLoading(true);
-        try {
-            const response = await grabNotifications(cursor);
-
-            if (cursor) {
-                // Append to existing notifications (infinite scroll)
-                setNotifications(prev => [...prev, ...response.personalNotifications]);
-            } else {
-                // Initial load - set fresh notifications
-                setNotifications(response.personalNotifications);
-
-                // Calculate unseen count (notifications that haven't been "seen" yet)
-                // Assuming backend returns 'seen' field or we use 'read' for now
-                const unseenNotifications = response.personalNotifications.filter((n: any) => !n.seen && !n.read);
-                setUnseenCount(unseenNotifications.length);
-
-                console.log('📊 Loaded notifications:', response.personalNotifications.length);
-                console.log('👁️ Unseen count:', unseenNotifications.length);
-            }
-
-            setNextCursor(response.nextCursor);
-            setHasMore(!!response.nextCursor);
-        } catch (error) {
-            console.error('Failed to load notifications:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleLoadMore = () => {
-        if (nextCursor && hasMore) {
-            loadNotifications(nextCursor);
-        }
-    };
-
     const handleNotificationClick = async (notification: any) => {
         console.log('🔔 Clicking notification:', notification);
 
         // Mark notification as read (visual styling only, doesn't affect badge)
-        if (!notification.read && notification._id) {
+        if (!notification.isRead && notification._id) {
             // Update UI immediately for instant feedback
             setNotifications(prev =>
                 prev.map(n =>
                     n._id === notification._id
-                        ? { ...n, read: true }
+                        ? { ...n, isRead: true }
                         : n
                 )
             );
 
-            // Sync with backend (optional, for persistence)
+            // Sync with backend
             try {
                 await markNotificationAsRead(notification._id);
                 console.log('✅ Notification marked as read');
-            } catch (error: any) {
+            } catch (error) {
                 console.error('Failed to mark notification as read:', error);
             }
         }
@@ -245,14 +229,14 @@ const NotificationBell = () => {
             </IconButton>
 
             <Drawer
-                anchor="right"
+                anchor="left"
                 open={open}
                 onClose={handleClose}
                 PaperProps={{
                     sx: {
                         width: { xs: 200, md: 300, lg: 400 }, // Match sidebar width
                         bgcolor: '#E9EDE8',
-                        borderLeft: '1px solid #dbdbdb',
+                        borderRight: '1px solid #dbdbdb',
                     },
                 }}
             >
@@ -301,9 +285,9 @@ const NotificationBell = () => {
                                         px: 2,
                                         py: 2,
                                         cursor: 'pointer',
-                                        bgcolor: notification.read ? 'transparent' : 'rgba(90, 113, 86, 0.08)',
+                                        bgcolor: notification.isRead ? 'transparent' : 'rgba(90, 113, 86, 0.08)',
                                         '&:hover': {
-                                            bgcolor: notification.read ? 'rgba(0, 0, 0, 0.04)' : 'rgba(90, 113, 86, 0.12)',
+                                            bgcolor: notification.isRead ? 'rgba(0, 0, 0, 0.04)' : 'rgba(90, 113, 86, 0.12)',
                                         },
                                         borderBottom: '1px solid #e0e0e0',
                                     }}
@@ -318,7 +302,7 @@ const NotificationBell = () => {
                                                     fontSize: '0.9rem',
                                                     color: '#262626',
                                                     mb: 0.5,
-                                                    fontWeight: notification.read ? 400 : 600,
+                                                    fontWeight: notification.isRead ? 400 : 600,
                                                     lineHeight: 1.4,
                                                 }}
                                             >
@@ -339,23 +323,6 @@ const NotificationBell = () => {
                                     </Box>
                                 </ListItem>
                             ))}
-
-                            {/* Load More Button */}
-                            {hasMore && (
-                                <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-                                    <Button
-                                        onClick={handleLoadMore}
-                                        disabled={loading}
-                                        sx={{
-                                            textTransform: 'none',
-                                            color: '#5A7156',
-                                            fontWeight: 600,
-                                        }}
-                                    >
-                                        {loading ? <CircularProgress size={20} sx={{ color: '#5A7156' }} /> : 'Load More'}
-                                    </Button>
-                                </Box>
-                            )}
                         </List>
                     )}
                 </Box>

@@ -343,7 +343,7 @@ export async function changeProfileInfo(data: {
     message: string;
 }> {
     const response = await fetchAPI<any>('/api/changeProfileInfo', {
-        method: 'POST',
+        method: 'PUT',
         body: JSON.stringify(data),
     });
 
@@ -404,60 +404,58 @@ export async function uploadProfilePictureKey(key: string): Promise<{
 }
 
 /**
- * Fetch notifications for current user
+ * Fetch all notifications (limit and skip for pagination)
  */
-export async function grabNotifications(lastTimestamp?: string): Promise<{
-    personalNotifications: any[];
-    nextCursor: string | null;
+export async function fetchNotifications(limit: number = 50, skip: number = 0): Promise<{
+    notifications: any[];
+    count: number;
 }> {
-    const params = new URLSearchParams();
-    if (lastTimestamp) {
-        params.append('lastTimestamp', lastTimestamp);
-    }
-
-    const queryString = params.toString();
-    const endpoint = `/api/grabNotifications${queryString ? `?${queryString}` : ''}`;
-
-    const response = await fetchAPI<any>(endpoint);
+    const response = await fetchAPI<any>(`/api/notifications?limit=${limit}&skip=${skip}`);
 
     return {
-        personalNotifications: response.data.personalNotifications || [],
-        nextCursor: response.data.nextCursor || null,
+        notifications: response.data.notifications || [],
+        count: response.data.count || 0,
     };
 }
 
 /**
- * Mark a notification as read
+ * Get unseen notification count (for badge)
  */
-export async function markNotificationAsRead(notifID: string): Promise<{
-    success: boolean;
-    message: string;
-}> {
-    const response = await fetchAPI<any>('/api/markRead', {
-        method: 'POST',
-        body: JSON.stringify({ notifID }),
-    });
-
-    return {
-        success: response.success,
-        message: response.message,
-    };
+export async function fetchUnseenCount(): Promise<number> {
+    const response = await fetchAPI<any>('/api/notifications/unseen-count');
+    return response.data.unseenCount || 0;
 }
 
 /**
- * Mark all notifications as seen (for badge count)
+ * Mark all notifications as seen (when bell is clicked)
  */
 export async function markAllNotificationsAsSeen(): Promise<{
     success: boolean;
-    message: string;
+    modifiedCount: number;
 }> {
-    const response = await fetchAPI<any>('/api/markAllSeen', {
+    const response = await fetchAPI<any>('/api/notifications/mark-all-seen', {
         method: 'POST',
     });
 
     return {
         success: response.success,
-        message: response.message,
+        modifiedCount: response.data?.modifiedCount || 0,
+    };
+}
+
+/**
+ * Mark individual notification as read (when clicked)
+ */
+export async function markNotificationAsRead(notificationId: string): Promise<{
+    success: boolean;
+}> {
+    const response = await fetchAPI<any>('/api/notifications/mark-read', {
+        method: 'POST',
+        body: JSON.stringify({ notificationId }),
+    });
+
+    return {
+        success: response.success,
     };
 }
 

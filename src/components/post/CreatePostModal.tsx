@@ -174,6 +174,8 @@ export default function CreatePostModal({ open, onClose, onPostCreated }: Create
             open={open}
             onClose={handleClose}
             maxWidth="sm"
+            disableAutoFocus
+            disableEnforceFocus
             fullWidth
             PaperProps={{
                 sx: {

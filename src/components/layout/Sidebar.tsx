@@ -27,6 +27,7 @@ export default function Sidebar() {
     const pathname = usePathname();
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [userName, setUserName] = useState<string | null>(null);
+    const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
 
     // Load username from localStorage only on client side
     useEffect(() => {
@@ -44,7 +45,7 @@ export default function Sidebar() {
     }, []);
 
     const navigationItems = [
-        { text: 'Discover', icon: <TerrainIcon />, path: '/', action: 'navigate' },
+        { text: 'Discover', icon: <TerrainIcon />, path: '/', action: 'navigate-refresh' },
         { text: 'Find Hikers', icon: <HikingIcon />, path: '/search', action: 'navigate' },
         { text: 'Notifications', icon: null, path: '/notifications', action: 'notification' },
         { text: 'Log My Hike', icon: <CameraAltIcon />, path: '/create', action: 'modal' },
@@ -76,7 +77,7 @@ export default function Sidebar() {
         <>
             <Box
                 sx={{
-                    display: { xs: 'none', md: 'flex' },
+                    display: notificationDrawerOpen ? 'none' : { xs: 'none', md: 'flex' },
                     flexDirection: 'column',
                     width: { xs: 200, md: 300, lg: 400 },
                     position: 'fixed',
@@ -109,20 +110,33 @@ export default function Sidebar() {
                                             alignItems: 'center',
                                             width: '100%',
                                             borderRadius: 2,
-                                            py: 1,
+                                            py: 1.5,
                                             px: 1,
+                                            transition: 'all 0.2s',
+                                            '&:hover': {
+                                                bgcolor: 'rgba(0,0,0,0.04)',
+                                            },
                                         }}
                                     >
-                                        <NotificationBell />
+                                        <Box
+                                            sx={{
+                                                minWidth: 40,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                            }}
+                                        >
+                                            <NotificationBell
+                                                onDrawerToggle={setNotificationDrawerOpen}
+                                            />
+                                        </Box>
                                         <ListItemText
                                             primary={item.text}
                                             primaryTypographyProps={{
                                                 fontSize: { md: '1rem', lg: '1.05rem' },
                                                 fontWeight: 400,
                                                 color: '#424242',
-                                                ml: 1,
                                             }}
-                                            sx={{ ml: 1 }}
                                         />
                                     </Box>
                                 </ListItem>
