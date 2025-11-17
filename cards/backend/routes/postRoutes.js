@@ -20,27 +20,22 @@ const {
 } = require('../utils/notifs.js');
 
 router.post('/addPost', authenticateToken, async (req, res) => {
-    // Payload in: { caption, difficulty, rating, images?: [{ key, type }], location? }
-    // Payload out: { postId, timestamp, error }
     try {
         const { caption, difficulty, rating, images, location } = req.body;
-
-        // auth
         const userId = new ObjectId(req.user.id);
-
-        // basic validation
+        
+        // Validation
         if (!caption) return res.status(400).json({ error: 'Caption is required' });
         if (difficulty === undefined || difficulty === null)
             return res.status(400).json({ error: 'Difficulty is required' });
         if (rating === undefined || rating === null)
             return res.status(400).json({ error: 'Rating is required' });
-
         if (typeof difficulty !== 'number' || difficulty < 0)
             return res.status(400).json({ error: 'Difficulty must be a non-negative number' });
         if (typeof rating !== 'number' || rating < 0)
             return res.status(400).json({ error: 'Rating must be a non-negative number' });
-
-        // sanitize images: keep only valid S3 keys and type (image|video)
+        
+        // Sanitize images
         const safeImages = Array.isArray(images)
             ? images
                 .filter(m => m && typeof m.key === 'string' && m.key.trim().length > 0)
@@ -50,52 +45,36 @@ router.post('/addPost', authenticateToken, async (req, res) => {
                     type: m.type === 'video' ? 'video' : 'image'
                 }))
             : null;
-
+        
         const db = await connectToDatabase();
-        const collection = db.collection('post');
-        const userCollection = db.collection('user');
-
         const timestamp = new Date();
-
-        const newPost = {
-            userId,
-            caption,
-            difficulty,
-            rating,
-            images: safeImages,         // e.g., [{ provider:'s3', key:'posts/uid/uuid.jpg', type:'image' }]
-            location: location || null,
-            timestamp,
-            likeCount: 0,
-            commentCount: 0,
-        };
-
-        const result = await collection.insertOne(newPost);
-
-        const data = {
+        
+        // Parallel: Insert post + Get user data
+        const [result, user] = await Promise.all([
+            db.collection('post').insertOne({
+                userId,
+                caption,
+                difficulty,
+                rating,
+                images: safeImages,
+                location: location || null,
+                timestamp,
+                likeCount: 0,
+                commentCount: 0,
+            }),
+            db.collection('user').findOne({ _id: userId }, { projection: { userName: 1 } })
+        ]);
+        
+        if (!user) {
+            return responseJSON(res, false, { code: 'User not found' }, 'User not found', 404);
+        }
+        
+        // Respond immediately
+        return responseJSON(res, true, {
             postId: result.insertedId,
             timestamp
-        };
-
-        // making a global notification to all users that a post was made
-        const post = await collection.findOne({ _id: result.insertedId })
-        const notif = req.app.get('socketio');
-        const user = await userCollection.findOne({ _id: post.userId })
-
-        // for storing in database
-        const notificationData = {
-            type: 'Post',
-            message: `${user.userName} made a new post`,
-            data: {
-                postId: result.insertedId,
-                userId: post.userId,
-                LikerUsername: user.userName,
-                timestamp: new Date()
-            }
-        }
-
-        await sendNotification(notif, notificationData, db, post.userId.toString(), true) // send too does not matter
-
-        return responseJSON(res, true, data, 'Post created successfully!', 201);
+        }, 'Post created successfully!', 201);
+        
     } catch (e) {
         console.error('Add post error:', e);
         return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to create post', 500);
