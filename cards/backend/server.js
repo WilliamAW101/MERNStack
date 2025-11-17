@@ -10,7 +10,7 @@ const serverHost = http.createServer(app);
 
 const socketIOServer = new Server(serverHost, {
     cors: {
-        origin: process.env.CLIENT_URL || "http://localhost:5000", // We should use localhost since we reverse proxy
+        origin: process.env.CLIENT_URL || "http://localhost:3000", // We should use localhost since we reverse proxy
         methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         credentials: true
     }
@@ -25,4 +25,4 @@ serverHost.listen(PORT, () => {
     console.log(`Starting new and improved server on ${PORT} :D`);
 })
 
-module.exports = {app, serverHost, socketIOServer};
+module.exports = { app, serverHost, socketIOServer };
