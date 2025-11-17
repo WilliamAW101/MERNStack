@@ -501,14 +501,12 @@ class Api {
     final sp = await SharedPreferences.getInstance();
     final token = sp.getString('token') ?? '';
     
-    final body = {
-      'userName': userName,
-      'phone': phone ?? '',
-      'firstName': firstName ?? '',
-      'lastName': lastName ?? '',
-      'profileDescription': profileDescription ?? '',
-      if (profilePicture != null) 'profilePicture': profilePicture,
-    };
+    // Build body - send values as provided (including empty strings)
+    final body = <String, dynamic>{};
+    if (phone != null) body['phone'] = phone;
+    if (firstName != null) body['firstName'] = firstName;
+    if (lastName != null) body['lastName'] = lastName;
+    if (profileDescription != null) body['profileDescription'] = profileDescription;
     
     final res = await http.post(
       _u('/changeProfileInfo'),
