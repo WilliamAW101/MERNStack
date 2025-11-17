@@ -13,8 +13,7 @@ import {
 } from '@/types/upload.types';
 import { Comment } from '@/types/comment.types';
 
-const BASE_URL = process.env.REMOTE_URL;
-console.log('BASE_URL', BASE_URL);
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 /**
  * Generic fetch wrapper with error handling

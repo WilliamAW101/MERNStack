@@ -190,8 +190,6 @@ export default function Feed({ isConnected, setIsConnected }: { isConnected: boo
     }, [nextCursor, loadingMore, isInitialLoad, loading, scrollLocked]);
 
     const handlePostCreated = async () => {
-        console.log('📝 Post created, starting refresh process...');
-
         // Lock scroll to prevent infinite scroll from triggering
         setScrollLocked(true);
 
@@ -205,19 +203,15 @@ export default function Feed({ isConnected, setIsConnected }: { isConnected: boo
         // Wait 1 second before fetching to ensure data is saved
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        console.log('🔄 Refreshing feed...');
         // Scroll to top to see the new post
         window.scrollTo(0, 0);
 
         // Force a feed refresh to pull the latest posts
         await loadPosts(undefined, false);
 
-        console.log('✅ Feed refreshed successfully');
-
         // Allow scroll after layout stabilizes
         setTimeout(() => {
             setScrollLocked(false);
-            console.log('🔓 Scroll unlocked');
         }, 500);
     };
 

@@ -103,7 +103,6 @@ export default function CreatePostModal({ open, onClose, onPostCreated }: Create
                 contentType: selectedFile.type as ContentType,
                 ext,
             });
-            console.log('📝 Got presigned URL:', uploadUrlResponse.uploadUrl);
 
             // Step 2: Upload file directly to S3 using presigned URL
             const uploadResponse = await fetch(uploadUrlResponse.uploadUrl, {
@@ -117,7 +116,6 @@ export default function CreatePostModal({ open, onClose, onPostCreated }: Create
             if (!uploadResponse.ok) {
                 throw new Error(`Failed to upload file to S3: ${uploadResponse.statusText}`);
             }
-            console.log('✅ File uploaded to S3 successfully');
 
             // Step 3: Create post with the S3 key
             const isVideo = selectedFile.type.startsWith('video/');
@@ -133,7 +131,6 @@ export default function CreatePostModal({ open, onClose, onPostCreated }: Create
             };
 
             await createPost(postData);
-            console.log('✅ Post saved to backend');
 
             // Clear form fields
             setCaption('');

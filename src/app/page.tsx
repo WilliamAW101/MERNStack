@@ -26,12 +26,10 @@ export default function Home() {
     if (isAuthenticated && socket) {
 
       const onConnect = () => {
-        console.log('✅ Socket connected successfully');
         setIsConnected(true);
 
         // Register user with socket server AFTER connection is established
         if (socket && user?.id) {
-          console.log(`Registering user ${user.id} to join room...`);
           socket.emit('register', user.id);
         }
       };
@@ -41,31 +39,20 @@ export default function Home() {
       };
 
       const onError = (error: any) => {
-        console.error('Socket connection error:', {
-          message: error.message,
-          description: error.description,
-          type: error.type,
-          context: error.context,
-        });
-
-
+        console.error('Socket connection error:', error);
         setIsConnected(false);
       };
 
       const onConnectError = (error: any) => {
-        console.error('Connect error:', error);
-      };
-
-      const onReconnectAttempt = (attemptNumber: number) => {
-        console.log(`Reconnection attempt #${attemptNumber}...`);
+        console.error('Socket connect error:', error);
       };
 
       const onReconnectFailed = () => {
-        console.error('Failed to reconnect after maximum attempts');
+        console.error('Socket failed to reconnect after maximum attempts');
       };
 
       const onRegistered = (response: { success: boolean; message: string }) => {
-        console.log('✅ Registration confirmed:', response.message);
+        // Successfully registered to notification room
       };
 
       // Register event listeners BEFORE connecting
@@ -74,30 +61,23 @@ export default function Home() {
       socket.on('connect_error', onError);
       socket.on('error', onConnectError);
       socket.on('registered', onRegistered);
-      socket.io.on('reconnect_attempt', onReconnectAttempt);
       socket.io.on('reconnect_failed', onReconnectFailed);
 
       // Connect to socket server
-      console.log('🔌 Connecting to socket server...');
       socket.connect();
 
       // Cleanup function
       return () => {
-        console.log('🧹 Cleaning up socket listeners...');
         socket?.off('connect', onConnect);
         socket?.off('disconnect', onDisconnect);
         socket?.off('connect_error', onError);
         socket?.off('error', onConnectError);
         socket?.off('registered', onRegistered);
-        socket?.io?.off('reconnect_attempt', onReconnectAttempt);
         socket?.io?.off('reconnect_failed', onReconnectFailed);
         if (socket?.connected) {
-          console.log('Disconnecting socket...');
           socket.disconnect();
         }
       };
-    } else if (isAuthenticated && !socket) {
-      console.log('Socket server URL not configured (NEXT_PUBLIC_SOCKET_URL). Socket features disabled.');
     }
   }, [isAuthenticated, user?.id]);
 

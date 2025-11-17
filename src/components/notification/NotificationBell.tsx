@@ -51,12 +51,10 @@ const NotificationBell = ({ onDrawerToggle }: NotificationBellProps) => {
                 // 1. Fetch all notifications
                 const response = await fetchNotifications(50, 0);
                 setNotifications(response.notifications);
-                console.log('📋 Fetched notifications:', response.count);
 
                 // 2. Mark all as seen (badge disappears)
                 if (unseenCount > 0) {
                     await markAllNotificationsAsSeen();
-                    console.log('✅ All notifications marked as seen');
 
                     // 3. Clear badge
                     setUnseenCount(0);
@@ -84,7 +82,6 @@ const NotificationBell = ({ onDrawerToggle }: NotificationBellProps) => {
             try {
                 const count = await fetchUnseenCount();
                 setUnseenCount(count);
-                console.log('📊 Initial unseen count:', count);
             } catch (error) {
                 console.error('Failed to fetch unseen count:', error);
             }
@@ -98,8 +95,6 @@ const NotificationBell = ({ onDrawerToggle }: NotificationBellProps) => {
         if (!socket) return;
 
         const handleNewNotification = (notification: any) => {
-            console.log('📬 Received new notification:', notification);
-
             // Add new notification to the top of the list (avoid duplicates)
             setNotifications(prev => {
                 const exists = prev.some(n => n._id === notification._id);
@@ -130,8 +125,6 @@ const NotificationBell = ({ onDrawerToggle }: NotificationBellProps) => {
     }, [toast]);
 
     const handleNotificationClick = async (notification: any) => {
-        console.log('🔔 Clicking notification:', notification);
-
         // Mark notification as read (visual styling only, doesn't affect badge)
         if (!notification.isRead && notification._id) {
             // Update UI immediately for instant feedback
@@ -146,7 +139,6 @@ const NotificationBell = ({ onDrawerToggle }: NotificationBellProps) => {
             // Sync with backend
             try {
                 await markNotificationAsRead(notification._id);
-                console.log('✅ Notification marked as read');
             } catch (error) {
                 console.error('Failed to mark notification as read:', error);
             }

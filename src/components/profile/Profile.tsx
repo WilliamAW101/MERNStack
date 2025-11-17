@@ -172,7 +172,6 @@ export default function Profile({ userName }: { userName: string }) {
             }
 
             const result = await fetchProfilePosts(userName, cursor);
-            console.log('result', result);
 
             if (cursor) {
                 // Append to existing posts, but deduplicate by _id
@@ -263,8 +262,6 @@ export default function Profile({ userName }: { userName: string }) {
                 throw new Error('Failed to get upload URL or key from server');
             }
 
-            console.log('📝 Got upload URL and key:', { uploadUrl, key });
-
             // Step 2: Upload file to S3 using presigned URL
             const uploadResponse = await fetch(uploadUrl, {
                 method: 'PUT',
@@ -277,8 +274,6 @@ export default function Profile({ userName }: { userName: string }) {
             if (!uploadResponse.ok) {
                 throw new Error(`Failed to upload file to S3: ${uploadResponse.statusText}`);
             }
-
-            console.log('✅ File uploaded to S3 successfully');
 
             // Step 3: Update profile with the generated key
             const updateResponse = await uploadProfilePictureKey(key);
@@ -307,15 +302,11 @@ export default function Profile({ userName }: { userName: string }) {
     const handlePostClick = async (post: Post) => {
         try {
             const fullPost = await fetchPostById(post._id);
-            console.log('fullPost', fullPost);
-            console.log('currentUserId', currentUserId);
 
             // Check if current user has liked this post
             const isLiked = fullPost.likes
                 ? fullPost.likes.some((like: PostLike) => like.user_id === currentUserId)
                 : false;
-
-            console.log('isLiked', isLiked);
 
             // Add isLiked to the fullPost object
             fullPost.isLiked = isLiked;
