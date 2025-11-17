@@ -167,7 +167,6 @@ router.put('/updatePost', authenticateToken, async (req, res) => {
         updateFields.updatedAt = new Date();
 
         // Convert S3 keys to URLs
-        result.imageURLs = null;
         const imageURLs = [];
         if (Array.isArray(safeImages) && safeImages.length > 0) {
             for (const image of safeImages) {
@@ -180,11 +179,10 @@ router.put('/updatePost', authenticateToken, async (req, res) => {
                 }
             }
         }
-        result.imageURLs = imageURLs;
+        if (imageURLs .length > 0)
+            updateFields.imageURLs = imageURLs;
 
-        const refreshedToken = refreshToken(req.user.token);
-
-        return responseJSON(res, true, { post: result, refreshedToken }, 'Post updated successfully!', 200);
+        return responseJSON(res, true, updateFields, 'Post updated successfully!', 200);
     } catch (e) {
         console.error('Update post error:', e);
         return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to update post', 500);
