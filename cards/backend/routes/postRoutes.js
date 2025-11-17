@@ -403,7 +403,7 @@ router.post('/addComment', authenticateToken, async (req, res) => {
         };
 
         // send notification
-        if (post.userId != userId) { // dont sent notif if it is user's own post
+        if (post.userId != userId.toString()) { // dont sent notif if it is user's own post
             const notif = req.app.get('socketio');
             const notificationData = {
                 type: 'Comment',
