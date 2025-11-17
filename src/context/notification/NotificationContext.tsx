@@ -55,8 +55,6 @@ export function NotificationProvider({
         if (isConnected && socket) {
 
             const handleLikeNotification = (data: any) => {
-                console.log('👍 Like notification received:', data);
-
                 const notification: Notification = {
                     _id: data._id || `like-${Date.now()}`,
                     type: 'like',

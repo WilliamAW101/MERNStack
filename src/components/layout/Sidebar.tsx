@@ -13,7 +13,6 @@ import {
 } from '@mui/material';
 // Hiking-themed icons (revert to: Home, Search, Notifications, AddCircle if needed)
 import TerrainIcon from '@mui/icons-material/Terrain';
-import HikingIcon from '@mui/icons-material/Hiking';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -46,7 +45,6 @@ export default function Sidebar() {
 
     const navigationItems = [
         { text: 'Discover', icon: <TerrainIcon />, path: '/', action: 'navigate-refresh' },
-        { text: 'Find Hikers', icon: <HikingIcon />, path: '/search', action: 'navigate' },
         { text: 'Notifications', icon: null, path: '/notifications', action: 'notification' },
         { text: 'Log My Hike', icon: <CameraAltIcon />, path: '/create', action: 'modal' },
         { text: 'Profile', icon: <AccountCircleIcon />, path: `/${userName}`, action: 'navigate' },
@@ -55,6 +53,19 @@ export default function Sidebar() {
     const handleNavigation = (path: string, action: string) => {
         if (action === 'modal') {
             setCreateModalOpen(true);
+        } else if (action === 'navigate-refresh') {
+            // Navigate and force refresh to reload feed
+            if (pathname === path) {
+                // Already on the page, just refresh
+                router.refresh();
+                window.location.reload();
+            } else {
+                // Navigate then reload
+                router.push(path);
+                setTimeout(() => {
+                    window.location.reload();
+                }, 100);
+            }
         } else {
             router.push(path);
         }

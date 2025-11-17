@@ -38,7 +38,10 @@ const NotificationBell = ({ onDrawerToggle }: NotificationBellProps) => {
     // CommentModal state
     const [commentModalOpen, setCommentModalOpen] = useState(false);
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+
+
     const [loadingPost, setLoadingPost] = useState(false);
+
 
     const handleClick = async () => {
         if (!open) {

@@ -85,8 +85,8 @@ export default function SignUp() {
   const [userEmail, setUserEmail] = React.useState('');
   const [showPassword, setShowPassword] = React.useState(false);
 
-  const baseUrl = process.env.REMOTE_URL;
 
+  const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
   const toast = useToast();
   const router = useRouter()
@@ -180,7 +180,7 @@ export default function SignUp() {
     };
 
     try {
-      const response = await fetch(`${baseUrl}/api/signup`, {
+      const response = await fetch(`${BASE_URL}/api/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json', // send JSON
@@ -389,22 +389,20 @@ export default function SignUp() {
                   color={passwordError ? 'error' : 'primary'}
                   InputProps={{
                     endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          aria-label="toggle password visibility"
-                          onClick={() => setShowPassword(!showPassword)}
-                          onMouseDown={(e) => e.preventDefault()}
-                          edge="end"
-                          sx={{
-                            padding: 0,
-                            '&:hover': {
-                              backgroundColor: 'transparent',
-                            },
-                          }}
-                        >
-                          {showPassword ? <Visibility /> : <VisibilityOff />}
-                        </IconButton>
-                      </InputAdornment>
+                      <Box
+                        onClick={() => setShowPassword(!showPassword)}
+                        sx={{
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          color: 'text.secondary',
+                          '&:hover': {
+                            color: 'text.primary',
+                          },
+                        }}
+                      >
+                        {showPassword ? <Visibility /> : <VisibilityOff />}
+                      </Box>
                     ),
                   }}
                 />

@@ -79,14 +79,38 @@ export default function CommentModal({
     const { user } = useUser();
     const toast = useToast();
 
-    // Use props if provided, otherwise fall back to post data
-    const liked = isLikedProp !== undefined ? isLikedProp : (post.isLiked ?? false);
-    const likeCount = likeCountProp !== undefined ? likeCountProp : (post.likeCount ?? 0);
+    // Helper function to check if current user liked the post
+    const checkIsLiked = (postData: Post) => {
+        if (!user?.id) return false;
+        // Backend returns an array of like objects with user_id field
+        const likes = postData.likes || [];
+        return likes.some(like => {
+            // Handle both object format {user_id: '...'} and string format
+            const likeUserId = typeof like === 'object' ? like.user_id : like;
+            return likeUserId === user.id;
+        });
+    };
+
+    // Local state for like management when no parent props provided
+    const [localLiked, setLocalLiked] = useState(() => checkIsLiked(post));
+    const [localLikeCount, setLocalLikeCount] = useState(post.likeCount ?? post.likes?.length ?? 0);
+
+    // Use props if provided, otherwise fall back to local state (ensure always a number)
+    const liked = isLikedProp !== undefined ? isLikedProp : localLiked;
+    const likeCount = (likeCountProp !== undefined ? likeCountProp : localLikeCount) ?? 0;
 
     // Sync comments when post changes
     useEffect(() => {
         setComments(post.comments || []);
     }, [post.comments]);
+
+    // Sync like state when post changes
+    useEffect(() => {
+        const newIsLiked = checkIsLiked(post);
+        const newCount = post.likeCount ?? post.likes?.length ?? 0;
+        setLocalLiked(newIsLiked);
+        setLocalLikeCount(newCount);
+    }, [post._id, post.likes, post.likeCount, user?.id]);
 
 
     const username = post.username || user?.userName || 'User';
@@ -103,10 +127,25 @@ export default function CommentModal({
             // Use parent's like handler if provided
             onLikePost();
         } else {
+            // Optimistic UI update
+            const previousLiked = localLiked;
+            const previousCount = localLikeCount ?? 0;
+            const newLiked = !localLiked;
+            const newCount = previousLiked ? previousCount - 1 : previousCount + 1;
+
+            setLocalLiked(newLiked);
+            setLocalLikeCount(newCount);
+
             try {
-                await likePost(post._id);
-                toast.success('Like updated');
+                const result = await likePost(post._id);
+                // Update with actual values from backend
+                // If backend doesn't return likeCount, keep our optimistic value
+                setLocalLiked(result.isLiked ?? newLiked);
+                setLocalLikeCount(result.likeCount ?? newCount);
             } catch (error) {
+                // Revert on error
+                setLocalLiked(previousLiked);
+                setLocalLikeCount(previousCount);
                 toast.error('Failed to update like');
             }
         }
@@ -290,6 +329,7 @@ export default function CommentModal({
                     <img
                         src={imageURLs.length > 0 ? imageURLs[currentImageIndex] : PLACEHOLDER_IMAGE}
                         alt={post.caption}
+                        loading="lazy"
                         style={{
                             maxWidth: '100%',
                             maxHeight: '100%',

@@ -29,7 +29,9 @@ export default function ResetPassword({ id }: ResetPasswordProps) {
     const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
     const toast = useToast();
     const router = useRouter();
-    const baseUrl = process.env.REMOTE_URL;
+
+    const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+
 
     const validatePassword = () => {
         let isValid = true;
@@ -67,7 +69,7 @@ export default function ResetPassword({ id }: ResetPasswordProps) {
         setLoading(true);
 
         try {
-            const response = await fetch(`${baseUrl}/api/changePassword`, {
+            const response = await fetch(`${BASE_URL}/api/changePassword`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id, newPassword: password, samePassword: password }),
@@ -133,22 +135,20 @@ export default function ResetPassword({ id }: ResetPasswordProps) {
                         }}
                         InputProps={{
                             endAdornment: (
-                                <InputAdornment position="end">
-                                    <IconButton
-                                        aria-label="toggle password visibility"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        edge="end"
-                                        sx={{
-                                            padding: 0,
-                                            '&:hover': {
-                                                backgroundColor: 'transparent',
-                                            },
-                                        }}
-                                    >
-                                        {showPassword ? <Visibility /> : <VisibilityOff />}
-                                    </IconButton>
-                                </InputAdornment>
+                                <Box
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    sx={{
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        color: 'text.secondary',
+                                        '&:hover': {
+                                            color: 'text.primary',
+                                        },
+                                    }}
+                                >
+                                    {showPassword ? <Visibility /> : <VisibilityOff />}
+                                </Box>
                             ),
                         }}
                     />
@@ -177,32 +177,30 @@ export default function ResetPassword({ id }: ResetPasswordProps) {
                         }}
                         InputProps={{
                             endAdornment: (
-                                <InputAdornment position="end">
-                                    <IconButton
-                                        aria-label="toggle confirm password visibility"
-                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        edge="end"
-                                        sx={{
-                                            padding: 0,
-                                            '&:hover': {
-                                                backgroundColor: 'transparent',
-                                            },
-                                        }}
-                                    >
-                                        {showConfirmPassword ? <Visibility /> : <VisibilityOff />}
-                                    </IconButton>
-                                </InputAdornment>
+                                <Box
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    sx={{
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        color: 'text.secondary',
+                                        '&:hover': {
+                                            color: 'text.primary',
+                                        },
+                                    }}
+                                >
+                                    {showConfirmPassword ? <Visibility /> : <VisibilityOff />}
+                                </Box>
                             ),
                         }}
                     />
                 </FormControl>
 
                 <Box sx={{ bgcolor: 'info.lighter', p: 2, borderRadius: 1 }}>
-                    <Typography variant="body2" color="info.dark">
+                    <Typography variant="body2" color="black">
                         <strong>Password Requirements:</strong>
                     </Typography>
-                    <Typography variant="body2" color="info.dark">
+                    <Typography variant="body2" color="black">
                         • At least 6 characters long
                     </Typography>
                 </Box>

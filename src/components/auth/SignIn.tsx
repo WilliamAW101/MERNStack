@@ -77,7 +77,7 @@ export default function SignIn() {
   const { setUser } = useUser();
 
 
-  const baseUrl = process.env.REMOTE_URL;
+  const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -93,7 +93,7 @@ export default function SignIn() {
     };
 
     try {
-      const response = await fetch(`${baseUrl}/api/login`, {
+      const response = await fetch(`${BASE_URL}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(jsonData),
@@ -103,7 +103,6 @@ export default function SignIn() {
 
       if (result.success && result.data.token) {
         const token = result.data.token;
-        console.log(result);
         if (typeof window !== 'undefined') {
           localStorage.setItem('token', token);
         }
@@ -220,22 +219,20 @@ export default function SignIn() {
                 color={passwordError ? 'error' : 'primary'}
                 InputProps={{
                   endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        aria-label="toggle password visibility"
-                        onClick={() => setShowPassword(!showPassword)}
-                        onMouseDown={(e) => e.preventDefault()}
-                        edge="end"
-                        sx={{
-                          padding: 0,
-                          '&:hover': {
-                            backgroundColor: 'transparent',
-                          },
-                        }}
-                      >
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
+                    <Box
+                      onClick={() => setShowPassword(!showPassword)}
+                      sx={{
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        color: 'text.secondary',
+                        '&:hover': {
+                          color: 'text.primary',
+                        },
+                      }}
+                    >
+                      {showPassword ? <Visibility /> : <VisibilityOff />}
+                    </Box>
                   ),
                 }}
               />

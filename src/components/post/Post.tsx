@@ -51,7 +51,7 @@ interface PostComponentProps extends PostProps {
     onPostDeleted?: (postId: string) => void;
 }
 
-export default function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
+function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
     const [liked, setLiked] = useState(post.isLiked ?? false);
     const [likes, setLikes] = useState(post.likeCount ?? 0);
     const [commentCount, setCommentCount] = useState(post.commentCount ?? 0);
@@ -371,6 +371,7 @@ export default function Post({ post, onPostUpdated, onPostDeleted }: PostCompone
                     component="img"
                     image={imageURLs.length > 0 ? imageURLs[currentImageIndex] : PLACEHOLDER_IMAGE}
                     alt={post.caption}
+                    loading="lazy"
                     sx={{
                         height: 'auto',
                         maxHeight: 600,
@@ -756,3 +757,14 @@ export default function Post({ post, onPostUpdated, onPostDeleted }: PostCompone
     );
 }
 
+// Memoize Post component to prevent unnecessary re-renders
+export default React.memo(Post, (prevProps, nextProps) => {
+    // Only re-render if post data actually changed
+    return (
+        prevProps.post._id === nextProps.post._id &&
+        prevProps.post.likeCount === nextProps.post.likeCount &&
+        prevProps.post.commentCount === nextProps.post.commentCount &&
+        prevProps.post.isLiked === nextProps.post.isLiked &&
+        prevProps.post.caption === nextProps.post.caption
+    );
+});

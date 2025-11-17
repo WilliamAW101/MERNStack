@@ -101,13 +101,12 @@ export default function Feed({ isConnected, setIsConnected }: { isConnected: boo
         loadUserProfile();
     }, [userName]);
 
-    const handleLogout = () => {
+    const handleLogout = useCallback(() => {
         logout();
         router.refresh();
-    };
+    }, [logout, router]);
 
-
-    const loadPosts = async (cursor?: string, isInitial: boolean = false) => {
+    const loadPosts = useCallback(async (cursor?: string, isInitial: boolean = false) => {
         try {
             if (cursor) {
                 setLoadingMore(true);
@@ -151,7 +150,7 @@ export default function Feed({ isConnected, setIsConnected }: { isConnected: boo
             setLoadingMore(false);
             setRefreshing(false);
         }
-    };
+    }, [toast]);
 
     // Infinite scroll with Intersection Observer
     // Only enable after initial load completes and layout is stable
@@ -215,17 +214,17 @@ export default function Feed({ isConnected, setIsConnected }: { isConnected: boo
         }, 500);
     };
 
-    const handlePostUpdated = (postId: string, updatedPost: PostType) => {
+    const handlePostUpdated = useCallback((postId: string, updatedPost: PostType) => {
         // Update the specific post in local state without refetching
         setPosts(prev => prev.map(post =>
             post._id === postId ? updatedPost : post
         ));
-    };
+    }, []);
 
-    const handlePostDeleted = (postId: string) => {
+    const handlePostDeleted = useCallback((postId: string) => {
         // Remove the post from local state without refetching
         setPosts(prev => prev.filter(post => post._id !== postId));
-    };
+    }, []);
 
 
     return (

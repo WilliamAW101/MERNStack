@@ -24,7 +24,7 @@ export default function ForgotPassword({ onBackToSignIn }: ForgotPasswordProps) 
 
   const router = useRouter();
 
-  const baseUrl = process.env.REMOTE_URL;
+  const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
   const validateEmail = (email: string) => {
     if (!email || !/\S+@\S+\.\S+/.test(email)) {
@@ -49,7 +49,7 @@ export default function ForgotPassword({ onBackToSignIn }: ForgotPasswordProps) 
     setLoading(true);
 
     try {
-      const response = await fetch(`${baseUrl}/api/sendCode?email=${email}`, {
+      const response = await fetch(`${BASE_URL}/api/sendCode?email=${email}`, {
         method: 'GET',
       });
 

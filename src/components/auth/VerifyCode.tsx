@@ -23,8 +23,8 @@ export default function VerifyCode({ email, onBack }: VerifyCodeProps) {
     const [codeErrorMessage, setCodeErrorMessage] = React.useState('');
     const toast = useToast();
     const router = useRouter();
-    const baseUrl = process.env.REMOTE_URL;
 
+    const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
     const validateCode = (code: string) => {
         if (!code || code.length !== 6 || !/^[0-9]+$/.test(code)) {
@@ -47,7 +47,7 @@ export default function VerifyCode({ email, onBack }: VerifyCodeProps) {
         setLoading(true);
 
         try {
-            const response = await fetch(`${baseUrl}/api/checkCode`, {
+            const response = await fetch(`${BASE_URL}/api/checkCode`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ code }),
@@ -74,7 +74,7 @@ export default function VerifyCode({ email, onBack }: VerifyCodeProps) {
     const handleResendCode = async () => {
         try {
 
-            const response = await fetch(`${baseUrl}/api/sendCode?email=${email}`, {
+            const response = await fetch(`${BASE_URL}/api/sendCode?email=${email}`, {
                 method: 'GET',
             });
 

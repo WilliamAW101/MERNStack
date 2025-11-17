@@ -83,13 +83,9 @@ export async function fetchPostById(postId: string): Promise<Post> {
     }
     );
 
-    // Extract username from comments if available, otherwise use "Unknown"
-    const username = response.data.comments?.[0]?.userName || "Unknown";
-
-    return {
-        ...response.data,
-        username,
-    };
+    // The backend should return the post with owner info directly
+    // Return the post data as-is from the backend
+    return response.data;
 }
 
 /**
