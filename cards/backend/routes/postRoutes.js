@@ -76,25 +76,6 @@ router.post('/addPost', authenticateToken, async (req, res) => {
             timestamp
         };
 
-        // making a global notification to all users that a post was made
-        const post = await collection.findOne({ _id: result.insertedId })
-        const notif = req.app.get('socketio');
-        const user = await userCollection.findOne({ _id: post.userId })
-
-        // for storing in database
-        const notificationData = {
-            type: 'Post',
-            message: `${user.userName} made a new post`,
-            data: {
-                postId: result.insertedId,
-                userId: post.userId,
-                LikerUsername: user.userName,
-                timestamp: new Date()
-            }
-        }
-
-        await sendNotification(notif, notificationData, db, post.userId.toString(), true) // send too does not matter
-
         return responseJSON(res, true, data, 'Post created successfully!', 201);
     } catch (e) {
         console.error('Add post error:', e);
@@ -401,6 +382,23 @@ router.post('/addComment', authenticateToken, async (req, res) => {
             commentId: result.insertedId,
             timestamp
         };
+
+        // send notification
+        if (post.userId != userId.toString()) { // dont sent notif if it is user's own post
+            const notif = req.app.get('socketio');
+            const notificationData = {
+                type: 'Comment',
+                message: `${userName} made a comment on your post`,
+                data: {
+                    postId: post._id,
+                    commentorId: userId,
+                    commentorUsername: userName,
+                    commentId: result.insertedId,
+                    timestamp: new Date()
+                }
+            }
+            await sendNotification(notif, notificationData, db, post.userId.toString(), false);
+        }
 
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 
