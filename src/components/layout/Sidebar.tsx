@@ -87,27 +87,31 @@ export default function Sidebar() {
     return (
         <>
             <Box
+                component="nav"
+                aria-label="Main navigation"
                 sx={{
                     display: notificationDrawerOpen ? 'none' : { xs: 'none', md: 'flex' },
                     flexDirection: 'column',
-                    width: { xs: 200, md: 300, lg: 400 },
+                    width: { md: 240, lg: 300, xl: 340 },
                     position: 'fixed',
                     height: '100vh',
-                    borderRight: '1px solid #dbdbdb',
-                    bgcolor: '#E9EDE8',
-                    pt: 4,
-                    pb: 3,
-                    px: 2,
+                    borderRight: '2px solid #d0d7d0',
+                    bgcolor: '#f2f4f2',
+                    background: 'linear-gradient(180deg, #f5f7f5 0%, #e8ebe8 100%)',
+                    pt: { md: 3, lg: 4 },
+                    pb: { md: 2, lg: 3 },
+                    px: { md: 1.5, lg: 2 },
                     zIndex: 1000,
+                    boxShadow: '4px 0 12px rgba(0,0,0,0.05)',
                 }}
             >
                 {/* Logo - Hiking Theme */}
-                <Box sx={{ px: 2, mb: 3 }}>
+                <Box sx={{ px: { md: 1, lg: 2 }, mb: { md: 3, lg: 4 }, borderBottom: '2px solid #d0d7d0', pb: 2 }}>
                     <SignatureLogo size="medium" color="#000" />
                 </Box>
 
                 {/* Navigation List */}
-                <List sx={{ flex: 1 }}>
+                <List sx={{ flex: 1, px: 1 }}>
                     {navigationItems.map((item, index) => {
                         const isActive = pathname === item.path && item.action === 'navigate';
 
@@ -121,8 +125,8 @@ export default function Sidebar() {
                                             alignItems: 'center',
                                             width: '100%',
                                             borderRadius: 2,
-                                            py: 1.5,
-                                            px: 1,
+                                            py: { md: 1.2, lg: 1.5 },
+                                            px: { md: 0.8, lg: 1 },
                                             transition: 'all 0.2s',
                                             '&:hover': {
                                                 bgcolor: 'rgba(0,0,0,0.04)',
@@ -131,7 +135,7 @@ export default function Sidebar() {
                                     >
                                         <Box
                                             sx={{
-                                                minWidth: 40,
+                                                minWidth: { md: 32, lg: 40 },
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
@@ -144,7 +148,7 @@ export default function Sidebar() {
                                         <ListItemText
                                             primary={item.text}
                                             primaryTypographyProps={{
-                                                fontSize: { md: '1rem', lg: '1.05rem' },
+                                                fontSize: { md: '0.875rem', lg: '1rem' },
                                                 fontWeight: 400,
                                                 color: '#424242',
                                             }}
@@ -158,10 +162,12 @@ export default function Sidebar() {
                             <ListItem key={index} disablePadding sx={{ mb: 0.5 }}>
                                 <ListItemButton
                                     onClick={() => handleNavigation(item.path, item.action)}
+                                    aria-label={item.text}
+                                    aria-current={isActive ? 'page' : undefined}
                                     sx={{
                                         borderRadius: 2,
-                                        py: 1.5,
-                                        px: 2,
+                                        py: { md: 1.2, lg: 1.5 },
+                                        px: { md: 1.5, lg: 2 },
                                         transition: 'all 0.2s',
                                         bgcolor: 'transparent',
                                         '&:hover': {
@@ -172,7 +178,7 @@ export default function Sidebar() {
                                 >
                                     <ListItemIcon
                                         sx={{
-                                            minWidth: 40,
+                                            minWidth: { md: 32, lg: 40 },
                                             color: isActive ? '#2e7d32' : '#424242', // Green when active, dark gray otherwise
                                         }}
                                     >
@@ -182,7 +188,7 @@ export default function Sidebar() {
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
                                                 '& > svg': {
-                                                    fontSize: { md: '1.75rem !important', lg: '1.85rem !important' },
+                                                    fontSize: { md: '1.5rem !important', lg: '1.75rem !important' },
                                                     fontWeight: isActive ? 700 : 400,
                                                 },
                                             }}
@@ -193,7 +199,7 @@ export default function Sidebar() {
                                     <ListItemText
                                         primary={item.text}
                                         primaryTypographyProps={{
-                                            fontSize: { md: '1rem', lg: '1.05rem' },
+                                            fontSize: { md: '0.875rem', lg: '1rem' },
                                             fontWeight: isActive ? 600 : 400,
                                             color: isActive ? '#2e7d32' : '#424242', // Green when active
                                         }}
@@ -208,21 +214,31 @@ export default function Sidebar() {
                 <Box sx={{ mt: 'auto', pt: 2 }}>
                     <ListItemButton
                         onClick={handleSignOut}
+                        aria-label="Sign out of your account"
                         sx={{
                             borderRadius: 2,
-                            py: 1.5,
-                            px: 2,
+                            py: { md: 1.2, lg: 1.5 },
+                            px: { md: 1.5, lg: 2 },
+                            mb: 1,
                             transition: 'all 0.2s',
-                            bgcolor: 'transparent',
+                            bgcolor: 'rgba(255, 107, 53, 0.08)',
+                            border: '1px solid rgba(255, 107, 53, 0.2)',
                             '&:hover': {
-                                bgcolor: 'rgba(0,0,0,0.04)',
+                                bgcolor: '#ff6b35',
+                                color: '#fff',
+                                '& .MuiListItemIcon-root': {
+                                    color: '#fff !important',
+                                },
+                                '& .MuiTypography-root': {
+                                    color: '#fff !important',
+                                },
                             },
                         }}
                     >
                         <ListItemIcon
                             sx={{
-                                minWidth: 40,
-                                color: 'black',
+                                minWidth: { md: 32, lg: 40 },
+                                color: '#ff6b35',
                             }}
                         >
                             <Box
@@ -231,7 +247,7 @@ export default function Sidebar() {
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     '& > svg': {
-                                        fontSize: { md: '1.75rem !important', lg: '1.85rem !important' },
+                                        fontSize: { md: '1.5rem !important', lg: '1.75rem !important' },
                                     },
                                 }}
                             >
@@ -241,9 +257,9 @@ export default function Sidebar() {
                         <ListItemText
                             primary="Sign Out"
                             primaryTypographyProps={{
-                                fontSize: { md: '1rem', lg: '1.05rem' },
-                                fontWeight: 400,
-                                color: 'black',
+                                fontSize: { md: '0.875rem', lg: '1rem' },
+                                fontWeight: 600,
+                                color: '#ff6b35',
                             }}
                         />
                     </ListItemButton>

@@ -22,6 +22,8 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Performance optimizations */
+  font-display: swap; /* Ensure text is visible during font load */
 }
 
 * {
@@ -54,4 +56,38 @@ a {
   100% {
     background-position: 0% 50%;
   }
+}
+
+/* Performance optimizations */
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Improve rendering performance for animations */
+@media (prefers-reduced-motion: no-preference) {
+  :root {
+    /* Removed scroll-behavior: smooth to prevent auto-scrolling issues */
+  }
+}
+
+/* GPU acceleration for commonly transformed elements */
+.will-change-transform {
+  will-change: transform;
+}
+
+.will-change-scroll {
+  will-change: scroll-position;
 }

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { socket } from '@/socket';
 import { useUser } from '../user/UserContext';
+import { useSocket } from '@/components/providers/SocketProvider';
 
 export interface Notification {
     _id: string;
@@ -29,23 +30,11 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
-export function NotificationProvider({
-    children,
-    isSocketConnected
-}: {
-    children: ReactNode;
-    isSocketConnected: boolean;
-}) {
+export function NotificationProvider({ children }: { children: ReactNode }) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
-    const [isConnected, setIsConnected] = useState(isSocketConnected);
-
+    const { isConnected } = useSocket();
     const { user } = useUser();
     const userId = user?.id;
-
-    // Update connection status when prop changes
-    useEffect(() => {
-        setIsConnected(isSocketConnected);
-    }, [isSocketConnected]);
 
     // Calculate unread count
     const unreadCount = notifications.filter(n => !n.read).length;

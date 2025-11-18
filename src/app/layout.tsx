@@ -3,7 +3,15 @@ import "./globals.css";
 import { UserProvider } from "@/context/user/UserContext";
 import { ToastProvider } from "@/context/toast";
 import MuiProvider from "@/components/common/MuiProvider";
-import { NotificationProvider } from "@/context/notification/NotificationContext";
+
+
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Crag Tag',
+  description: 'The blog forum for who love hiking',
+};
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,7 +36,7 @@ export default function RootLayout({
         <MuiProvider>
           <ToastProvider>
             <UserProvider>
-                {children}
+              {children}
             </UserProvider>
           </ToastProvider>
         </MuiProvider>

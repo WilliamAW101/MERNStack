@@ -5,7 +5,6 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import {
     Card,
     CardHeader,
-    CardMedia,
     CardContent,
     CardActions,
     Avatar,
@@ -49,9 +48,10 @@ const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 interface PostComponentProps extends PostProps {
     onPostUpdated?: (postId: string, updatedPost: PostType) => void;
     onPostDeleted?: (postId: string) => void;
+    priority?: boolean; // For priority image loading
 }
 
-function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
+function Post({ post, onPostUpdated, onPostDeleted, priority = false }: PostComponentProps) {
     const [liked, setLiked] = useState(post.isLiked ?? false);
     const [likes, setLikes] = useState(post.likeCount ?? 0);
     const [commentCount, setCommentCount] = useState(post.commentCount ?? 0);
@@ -247,10 +247,17 @@ function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
         <Card
             sx={{
                 maxWidth: '100%',
-                bgcolor: '#E9EDE8',
-                borderRadius: 0,
-                boxShadow: 'none',
-                border: 'none',
+                bgcolor: '#fff',
+                borderRadius: 3,
+                boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+                border: '1px solid rgba(46, 125, 50, 0.08)',
+                mb: 3,
+                overflow: 'hidden',
+                transition: 'all 0.3s',
+                '&:hover': {
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+                    transform: 'translateY(-2px)',
+                },
             }}
         >
             <CardHeader
@@ -258,6 +265,7 @@ function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
                     userAvatar ? (
                         <Avatar
                             src={userAvatar}
+                            alt={`${post.username || 'User'}'s profile picture`}
                             sx={{
                                 width: { xs: 32, sm: 36 },
                                 height: { xs: 32, sm: 36 },
@@ -273,6 +281,7 @@ function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
                                 height: { xs: 32, sm: 36 },
                                 color: '#262626',
                             }}
+                            aria-label={`${post.username || 'User'}'s profile icon`}
                         />
                     )
                 }
@@ -282,6 +291,8 @@ function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
                             <IconButton
                                 onClick={handleMenuClick}
                                 size="small"
+                                aria-label="Post options"
+                                aria-haspopup="true"
                                 sx={{
                                     color: '#262626',
                                     '&:hover': {
@@ -355,9 +366,9 @@ function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
                     </Typography>
                 }
                 sx={{
-                    padding: 0,
-                    paddingBottom: { xs: 0.5, sm: 1 },
-                    paddingTop: { xs: 1, sm: 1.5 },
+                    padding: { xs: 1.5, sm: 2 },
+                    paddingBottom: { xs: 1, sm: 1.5 },
+                    bgcolor: 'rgba(46, 125, 50, 0.02)',
                     '& .MuiCardHeader-avatar': {
                         marginRight: { xs: 1, sm: 1.5 },
                         marginLeft: 0,
@@ -366,17 +377,27 @@ function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
             />
 
             {/* Image Carousel */}
-            <Box sx={{ position: 'relative' }}>
-                <CardMedia
+            <Box
+                sx={{
+                    position: 'relative',
+                    width: '100%',
+                    aspectRatio: '1 / 1', // Fixed aspect ratio to prevent layout shift
+                    maxHeight: 600,
+                    backgroundColor: '#f0f0f0', // Placeholder color while loading
+                    overflow: 'hidden',
+                }}
+            >
+                <Box
                     component="img"
-                    image={imageURLs.length > 0 ? imageURLs[currentImageIndex] : PLACEHOLDER_IMAGE}
-                    alt={post.caption}
-                    loading="lazy"
+                    src={imageURLs.length > 0 ? imageURLs[currentImageIndex] : PLACEHOLDER_IMAGE}
+                    alt={post.caption || 'Post image'}
+                    loading={priority ? 'eager' : 'lazy'} // Priority images load immediately
+                    decoding="async" // Async image decoding for better performance
                     sx={{
-                        height: 'auto',
-                        maxHeight: 600,
-                        objectFit: 'cover',
                         width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        display: 'block',
                     }}
                 />
                 {refreshingPost && (
@@ -405,6 +426,7 @@ function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
                 {hasMultipleImages && !isFirstImage && (
                     <IconButton
                         onClick={handlePreviousImage}
+                        aria-label="Previous image"
                         sx={{
                             position: 'absolute',
                             left: 8,
@@ -426,6 +448,7 @@ function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
                 {hasMultipleImages && !isLastImage && (
                     <IconButton
                         onClick={handleNextImage}
+                        aria-label="Next image"
                         sx={{
                             position: 'absolute',
                             right: 8,
@@ -447,6 +470,8 @@ function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
                 {/* Image Counter Dots */}
                 {hasMultipleImages && (
                     <Box
+                        role="group"
+                        aria-label="Image navigation"
                         sx={{
                             position: 'absolute',
                             bottom: 12,
@@ -459,6 +484,16 @@ function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
                         {imageURLs.map((_, index) => (
                             <Box
                                 key={index}
+                                role="button"
+                                tabIndex={0}
+                                aria-label={`Go to image ${index + 1} of ${imageURLs.length}`}
+                                aria-current={index === currentImageIndex ? 'true' : 'false'}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        setCurrentImageIndex(index);
+                                    }
+                                }}
                                 sx={{
                                     width: 6,
                                     height: 6,
@@ -466,6 +501,10 @@ function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
                                     bgcolor: index === currentImageIndex ? '#0095f6' : 'rgba(255, 255, 255, 0.6)',
                                     transition: 'all 0.3s',
                                     cursor: 'pointer',
+                                    '&:focus': {
+                                        outline: '2px solid #0095f6',
+                                        outlineOffset: '2px',
+                                    },
                                 }}
                                 onClick={() => setCurrentImageIndex(index)}
                             />
@@ -477,8 +516,9 @@ function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
             <CardActions
                 disableSpacing
                 sx={{
-                    padding: 0,
-                    py: { xs: 0.5, sm: 1 },
+                    padding: { xs: 1, sm: 1.5 },
+                    px: { xs: 1.5, sm: 2 },
+                    borderTop: '1px solid rgba(0,0,0,0.05)',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
@@ -489,6 +529,7 @@ function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <IconButton
                             onClick={handleLike}
+                            aria-label={liked ? 'Unlike post' : 'Like post'}
                             sx={{
                                 color: liked ? '#ed4956' : '#000',
                                 padding: { xs: '2px', sm: '3px' },
@@ -509,6 +550,7 @@ function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
                                 fontWeight: 500,
                                 minWidth: { xs: '16px', sm: '20px' },
                             }}
+                            aria-label={`${likes} likes`}
                         >
                             {likes}
                         </Typography>
@@ -518,6 +560,7 @@ function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <IconButton
                             onClick={handleCommentIconClick}
+                            aria-label="View comments"
                             sx={{
                                 color: '#000',
                                 padding: { xs: '2px', sm: '3px' },
@@ -536,12 +579,14 @@ function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
                                 fontWeight: 500,
                                 minWidth: { xs: '20px', sm: '24px' },
                             }}
+                            aria-label={`${commentCount} comments`}
                         >
                             {commentCount}
                         </Typography>
                     </Box>
                 </Box>
                 <IconButton
+                    aria-label="Save post"
                     sx={{
                         color: '#000',
                         padding: { xs: '4px', sm: '6px' },
@@ -554,11 +599,22 @@ function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
                 </IconButton>
             </CardActions>
 
-            <CardContent sx={{ padding: 0, pt: 0, pb: { xs: 1.5, sm: 2 } }}>
+            <CardContent sx={{ padding: { xs: 1.5, sm: 2 }, pt: { xs: 1, sm: 1.5 }, pb: { xs: 1.5, sm: 2 } }}>
 
-                {/* Caption and Location in same row */}
-                <Box sx={{ mb: { xs: 1, sm: 1.5 }, display: 'flex', justifyContent: 'space-between' }}>
-                    <Box>
+                {/* Caption and Location - Responsive layout */}
+                <Box sx={{
+                    mb: { xs: 1, sm: 1.5 },
+                    display: 'flex',
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    gap: { xs: 0.5, sm: 1 }
+                }}>
+                    <Box sx={{
+                        maxWidth: { xs: '100%', sm: '70%', md: '75%' },
+                        flex: 1,
+                        minWidth: 0
+                    }}>
                         <Typography
                             variant="body2"
                             component="span"
@@ -566,7 +622,15 @@ function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
                         >
                             {username}
                         </Typography>
-                        <Typography variant="body2" component="span" sx={{ color: '#000', fontSize: { xs: '0.8125rem', sm: '0.875rem' } }}>
+                        <Typography
+                            variant="body2"
+                            component="span"
+                            sx={{
+                                color: '#000',
+                                fontSize: { xs: '0.8125rem', sm: '0.875rem' },
+                                wordBreak: 'break-word'
+                            }}
+                        >
                             {post.caption}
                         </Typography>
                     </Box>
@@ -578,7 +642,9 @@ function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
                                 color: '#00376b',
                                 cursor: 'pointer',
                                 fontSize: { xs: '0.8125rem', sm: '0.875rem' },
-                                ml: 1,
+                                fontWeight: 500,
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0,
                                 '&:hover': {
                                     textDecoration: 'underline',
                                 },
@@ -589,17 +655,42 @@ function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
                     )}
                 </Box>
 
-                {/* Difficulty and Rating in same row */}
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: { xs: 1, sm: 1.5 } }}>
+                {/* Difficulty and Rating - Responsive layout */}
+                <Box sx={{
+                    display: 'flex',
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    alignItems: { xs: 'flex-start', sm: 'center' },
+                    justifyContent: 'space-between',
+                    gap: { xs: 1, sm: 2 },
+                    mb: { xs: 1, sm: 1.5 }
+                }}>
                     {post.difficulty && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="body2" sx={{ color: '#737373', fontSize: { xs: '0.8125rem', sm: '0.875rem' } }}>
+                        <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            bgcolor: 'rgba(255, 107, 53, 0.1)',
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: 2,
+                            border: '1px solid rgba(255, 107, 53, 0.2)',
+                        }}>
+                            <Typography variant="body2" sx={{ color: '#ff6b35', fontSize: { xs: '0.8125rem', sm: '0.875rem' }, fontWeight: 600 }}>
                                 Difficulty: {getDifficultyEmoji(post.difficulty)}
                             </Typography>
                         </Box>
                     )}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <Typography variant="body2" sx={{ color: '#737373', fontSize: { xs: '0.8125rem', sm: '0.875rem' } }}>
+                    <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        bgcolor: 'rgba(255, 193, 7, 0.1)',
+                        px: 1.5,
+                        py: 0.5,
+                        borderRadius: 2,
+                        border: '1px solid rgba(255, 193, 7, 0.2)',
+                    }}>
+                        <Typography variant="body2" sx={{ color: '#f57c00', fontSize: { xs: '0.8125rem', sm: '0.875rem' }, fontWeight: 600 }}>
                             Rating:
                         </Typography>
                         <Rating
@@ -654,7 +745,7 @@ function Post({ post, onPostUpdated, onPostDeleted }: PostComponentProps) {
                                 padding: 0,
                             },
                             '& .MuiInputBase-input::placeholder': {
-                                color: '#8e8e8e',
+                                color: '#666666',
                                 opacity: 1,
                             },
                         }}
@@ -765,6 +856,8 @@ export default React.memo(Post, (prevProps, nextProps) => {
         prevProps.post.likeCount === nextProps.post.likeCount &&
         prevProps.post.commentCount === nextProps.post.commentCount &&
         prevProps.post.isLiked === nextProps.post.isLiked &&
-        prevProps.post.caption === nextProps.post.caption
+        prevProps.post.caption === nextProps.post.caption &&
+        prevProps.post.imageURLs?.length === nextProps.post.imageURLs?.length &&
+        prevProps.priority === nextProps.priority
     );
 });

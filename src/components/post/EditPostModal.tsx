@@ -138,6 +138,18 @@ export default function EditPostModal({ open, onClose, onPostUpdated, post }: Ed
                         ext,
                     });
 
+                    // Step 2: Upload file directly to S3 using presigned URL
+                    const uploadResponse = await fetch(uploadUrlResponse.uploadUrl, {
+                        method: 'PUT',
+                        body: selectedFile,
+                        headers: {
+                            'Content-Type': selectedFile.type,
+                        },
+                    });
+
+                    if (!uploadResponse.ok) {
+                        throw new Error(`Failed to upload file to S3: ${uploadResponse.statusText}`);
+                    }
 
                     // Step 3: Include the new image key in the update
                     const isVideo = selectedFile.type.startsWith('video/');
@@ -198,6 +210,7 @@ export default function EditPostModal({ open, onClose, onPostUpdated, post }: Ed
             disableAutoFocus
             disableEnforceFocus
             fullWidth
+            aria-labelledby="edit-post-dialog-title"
             PaperProps={{
                 sx: {
                     borderRadius: 3,
@@ -205,6 +218,7 @@ export default function EditPostModal({ open, onClose, onPostUpdated, post }: Ed
             }}
         >
             <DialogTitle
+                id="edit-post-dialog-title"
                 sx={{
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -217,11 +231,15 @@ export default function EditPostModal({ open, onClose, onPostUpdated, post }: Ed
             >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <SignatureLogo size="small" color="#000" />
+                    <Typography component="span" sx={{ fontSize: '1rem', fontWeight: 600 }}>
+                        Edit Post
+                    </Typography>
                 </Box>
                 <IconButton
                     onClick={handleClose}
                     disabled={updating}
                     size="small"
+                    aria-label="Close edit post dialog"
                 >
                     <CloseIcon />
                 </IconButton>
@@ -247,6 +265,7 @@ export default function EditPostModal({ open, onClose, onPostUpdated, post }: Ed
                                                 : 'img'
                                     }
                                     src={previewUrl || post.imageURLs?.[0]}
+                                    alt={previewUrl ? 'New post image preview' : post.caption || 'Post image'}
                                     controls={
                                         (previewUrl && selectedFile?.type.startsWith('video/')) ||
                                         post.imageURLs?.[0]?.includes('.mp4') ||
@@ -263,6 +282,7 @@ export default function EditPostModal({ open, onClose, onPostUpdated, post }: Ed
                                 {previewUrl && (
                                     <IconButton
                                         onClick={handleRemoveNewImage}
+                                        aria-label="Remove selected image"
                                         sx={{
                                             position: 'absolute',
                                             top: 8,
@@ -305,6 +325,15 @@ export default function EditPostModal({ open, onClose, onPostUpdated, post }: Ed
                         {!post.imageURLs?.[0] && !previewUrl && (
                             <Box
                                 onClick={() => fileInputRef.current?.click()}
+                                role="button"
+                                tabIndex={0}
+                                aria-label="Upload post image"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        fileInputRef.current?.click();
+                                    }
+                                }}
                                 sx={{
                                     border: '2px dashed #dbdbdb',
                                     borderRadius: 2,
@@ -317,13 +346,17 @@ export default function EditPostModal({ open, onClose, onPostUpdated, post }: Ed
                                         borderColor: '#0095f6',
                                         bgcolor: '#f0f8ff',
                                     },
+                                    '&:focus': {
+                                        outline: '2px solid #0095f6',
+                                        outlineOffset: '2px',
+                                    },
                                 }}
                             >
-                                <CloudUploadIcon sx={{ fontSize: 48, color: '#8e8e8e', mb: 1 }} />
+                                <CloudUploadIcon sx={{ fontSize: 48, color: '#666666', mb: 1 }} />
                                 <Typography variant="body2" sx={{ color: '#262626', fontWeight: 600 }}>
                                     Click to upload
                                 </Typography>
-                                <Typography variant="caption" sx={{ color: '#8e8e8e' }}>
+                                <Typography variant="caption" sx={{ color: '#666666' }}>
                                     JPG, PNG, WEBP, MP4, MOV, or HEIC (max 50MB)
                                 </Typography>
                             </Box>
@@ -334,6 +367,7 @@ export default function EditPostModal({ open, onClose, onPostUpdated, post }: Ed
                             type="file"
                             accept="image/jpeg,image/png,image/webp,video/mp4,video/mov,image/heic"
                             onChange={handleFileSelect}
+                            aria-label="Upload image or video file"
                             style={{ display: 'none' }}
                         />
                     </Box>
@@ -388,6 +422,7 @@ export default function EditPostModal({ open, onClose, onPostUpdated, post }: Ed
                                     key={level}
                                     onClick={() => setDifficulty(level)}
                                     variant={difficulty === level ? 'contained' : 'outlined'}
+                                    aria-label={`Set difficulty level ${level}`}
                                     sx={{
                                         minWidth: 56,
                                         height: 48,
@@ -395,7 +430,7 @@ export default function EditPostModal({ open, onClose, onPostUpdated, post }: Ed
                                         fontWeight: 600,
                                         borderRadius: 2,
                                         bgcolor: difficulty === level ? '#ff6b35' : 'transparent',
-                                        color: difficulty === level ? '#fff' : '#8e8e8e',
+                                        color: difficulty === level ? '#fff' : '#666666',
                                         borderColor: difficulty === level ? '#ff6b35' : '#e0e0e0',
                                         '&:hover': {
                                             bgcolor: difficulty === level ? '#e55a2b' : 'rgba(255, 107, 53, 0.08)',
@@ -423,6 +458,7 @@ export default function EditPostModal({ open, onClose, onPostUpdated, post }: Ed
                             value={rating}
                             onChange={(_, value) => setRating(value || 1)}
                             size="large"
+                            aria-label="Post rating"
                             icon={<StarIcon sx={{ fontSize: '2.5rem' }} />}
                             emptyIcon={<StarIcon sx={{ fontSize: '2.5rem' }} />}
                             sx={{
