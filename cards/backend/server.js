@@ -10,7 +10,11 @@ const serverHost = http.createServer(app);
 
 const socketIOServer = new Server(serverHost, {
     cors: {
-        origin: process.env.CLIENT_URL || "http://localhost:3000", // We should use localhost since we reverse proxy
+        origin: [
+            process.env.CLIENT_URL || "http://localhost:3000",
+            "https://cragtag.vercel.app",
+            "https://crag-tag.vercel.app"
+        ],
         methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         credentials: true
     }
