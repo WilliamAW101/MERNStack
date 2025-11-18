@@ -1211,6 +1211,83 @@ describe('POST /api/addPost', () => {
         });
     });
 
+    it('rejects when caption is missing', async () => {
+        const { token } = await createVerifiedUserWithToken({ userName: 'no-caption-user' });
+
+        const res = await request(app)
+            .post('/api/addPost')
+            .set('Authorization', `Bearer ${token}`)
+            .send({
+                difficulty: 1,
+                rating: 1,
+            });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('Caption is required');
+    });
+
+    it('rejects when difficulty is missing', async () => {
+        const { token } = await createVerifiedUserWithToken({ userName: 'no-difficulty-user' });
+
+        const res = await request(app)
+            .post('/api/addPost')
+            .set('Authorization', `Bearer ${token}`)
+            .send({
+                caption: 'Some caption',
+                rating: 1,
+            });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('Difficulty is required');
+    });
+
+    it('rejects when rating is missing', async () => {
+        const { token } = await createVerifiedUserWithToken({ userName: 'no-rating-user' });
+
+        const res = await request(app)
+            .post('/api/addPost')
+            .set('Authorization', `Bearer ${token}`)
+            .send({
+                caption: 'Some caption',
+                difficulty: 1,
+            });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('Rating is required');
+    });
+
+    it('rejects when difficulty is negative', async () => {
+        const { token } = await createVerifiedUserWithToken({ userName: 'negative-difficulty-user' });
+
+        const res = await request(app)
+            .post('/api/addPost')
+            .set('Authorization', `Bearer ${token}`)
+            .send({
+                caption: 'Some caption',
+                difficulty: -1,
+                rating: 1,
+            });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('Difficulty must be a non-negative number');
+    });
+
+    it('rejects when rating is negative', async () => {
+        const { token } = await createVerifiedUserWithToken({ userName: 'negative-rating-user' });
+
+        const res = await request(app)
+            .post('/api/addPost')
+            .set('Authorization', `Bearer ${token}`)
+            .send({
+                caption: 'Some caption',
+                difficulty: 1,
+                rating: -1,
+            });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('Rating must be a non-negative number');
+    });
+
     it('rejects unauthenticated requests', async () => {
         const res = await request(app)
             .post('/api/addPost')
@@ -1244,6 +1321,120 @@ describe('PUT /api/updatePost', () => {
         expect(updated.caption).toBe('Updated caption');
         expect(updated.difficulty).toBe(3);
         expect(updated.rating).toBe(4);
+    });
+
+    it('rejects when postId is missing', async () => {
+        const { token } = await createVerifiedUserWithToken({ userName: 'missingPostIdUser' });
+
+        const res = await request(app)
+            .put('/api/updatePost')
+            .set('Authorization', `Bearer ${token}`)
+            .send({
+                caption: 'Updated caption',
+                difficulty: 2,
+                rating: 3,
+            });
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/post id is required/i);
+    });
+
+    it('rejects when postId format is invalid', async () => {
+        const { token } = await createVerifiedUserWithToken({ userName: 'invalidIdUser' });
+
+        const res = await request(app)
+            .put('/api/updatePost')
+            .set('Authorization', `Bearer ${token}`)
+            .send({
+                postId: 'not-a-valid-object-id',
+                caption: 'Updated caption',
+            });
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/invalid post id format/i);
+    });
+
+    it('returns 404 when the post does not exist', async () => {
+        const { token } = await createVerifiedUserWithToken({ userName: 'missingPostUser' });
+
+        const res = await request(app)
+            .put('/api/updatePost')
+            .set('Authorization', `Bearer ${token}`)
+            .send({
+                postId: new ObjectId().toString(),
+                caption: 'Updated caption',
+            });
+
+        expect(res.status).toBe(404);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/post not found/i);
+    });
+
+    it('rejects updates from a user who does not own the post', async () => {
+        const owner = await createUserWithPost({ userName: 'ownerUser' }, { caption: 'Owner caption' });
+        const other = await createVerifiedUserWithToken({ userName: 'otherUser' });
+
+        const res = await request(app)
+            .put('/api/updatePost')
+            .set('Authorization', `Bearer ${other.token}`)
+            .send({
+                postId: owner.postId.toString(),
+                caption: 'Attempted update',
+            });
+
+        expect(res.status).toBe(403);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/do not have permission to update this post/i);
+    });
+
+    it('rejects when caption is an empty string', async () => {
+        const { token, postId } = await createUserWithPost({ userName: 'emptyCaptionUser' }, { caption: 'Old caption' });
+
+        const res = await request(app)
+            .put('/api/updatePost')
+            .set('Authorization', `Bearer ${token}`)
+            .send({
+                postId: postId.toString(),
+                caption: '   ',
+            });
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/caption must be a non-empty string/i);
+    });
+
+    it('rejects when difficulty is negative', async () => {
+        const { token, postId } = await createUserWithPost({ userName: 'negativeDifficultyUpdate' }, { caption: 'Old caption' });
+
+        const res = await request(app)
+            .put('/api/updatePost')
+            .set('Authorization', `Bearer ${token}`)
+            .send({
+                postId: postId.toString(),
+                difficulty: -1,
+            });
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/difficulty must be a non-negative number/i);
+    });
+
+    it('rejects when rating is negative', async () => {
+        const { token, postId } = await createUserWithPost({ userName: 'negativeRatingUpdate' }, { caption: 'Old caption' });
+
+        const res = await request(app)
+            .put('/api/updatePost')
+            .set('Authorization', `Bearer ${token}`)
+            .send({
+                postId: postId.toString(),
+                rating: -1,
+            });
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/rating must be a non-negative number/i);
     });
 });
 
