@@ -58,6 +58,7 @@ beforeEach(async () => {
         db.collection('post').deleteMany({}).catch(() => null),
         db.collection('comment').deleteMany({}).catch(() => null),
         db.collection('likes').deleteMany({}).catch(() => null),
+        db.collection('notifications').deleteMany({}).catch(() => null),
     ]);
 });
 
@@ -134,6 +135,71 @@ describe('POST /api/signup', () => {
         expect(storedUser.password).not.toBe(payload.password);
         expect(storedUser.verified).toBe(false);
     });
+
+    it('rejects when required fields are missing', async () => {
+        const res = await request(app)
+            .post('/api/signup')
+            .send({
+                userName: '',
+                password: '',
+                email: 'janedoe@example.com',
+                phone: '',
+                firstName: '',
+                lastName: '',
+            });
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/missing required field/i);
+        expect(res.body.message).toMatch(/userName/i);
+    });
+
+    it('rejects invalid email format', async () => {
+        const res = await request(app)
+            .post('/api/signup')
+            .send({
+                userName: 'bademail',
+                password: 'ValidPass123!',
+                email: 'not-an-email',
+                phone: '123-456-7890',
+                firstName: 'Jane',
+                lastName: 'Doe',
+            });
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/invalid email format/i);
+    });
+
+    it('rejects when user already exists with same username or email', async () => {
+        const db = await connectToDatabase();
+        await db.collection('user').insertOne({
+            userName: 'janedoe',
+            password: await hashPass('ExistingPass123!'),
+            email: 'janedoe@example.com',
+            phone: '123-456-7890',
+            firstName: 'Existing',
+            lastName: 'User',
+            verified: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+
+        const res = await request(app)
+            .post('/api/signup')
+            .send({
+                userName: 'janedoe',
+                password: 'ValidPass123!',
+                email: 'janedoe@example.com',
+                phone: '123-456-7890',
+                firstName: 'Jane',
+                lastName: 'Doe',
+            });
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/user already exists/i);
+    });
 });
 
 describe('POST /api/login', () => {
@@ -174,6 +240,64 @@ describe('POST /api/login', () => {
         expect(res.body.success).toBe(false);
         expect(res.body.message).toMatch(/invalid username or password/i);
     });
+
+    it('rejects login when username or password is missing', async () => {
+        const res = await request(app)
+            .post('/api/login')
+            .send({ userName: 'veronica' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/username and password are required/i);
+    });
+
+    it('rejects login when password is incorrect', async () => {
+        const db = await connectToDatabase();
+        const plainPassword = 'CorrectPass123!';
+        await db.collection('user').insertOne({
+            userName: 'wrongpass',
+            password: await hashPass(plainPassword),
+            email: 'wrongpass@example.com',
+            phone: '111-222-3333',
+            firstName: 'Wrong',
+            lastName: 'Pass',
+            verified: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+
+        const res = await request(app)
+            .post('/api/login')
+            .send({ userName: 'wrongpass', password: 'NotTheRightPassword!' });
+
+        expect(res.status).toBe(401);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/invalid username or password/i);
+    });
+
+    it('rejects login when user email is not verified', async () => {
+        const db = await connectToDatabase();
+        const plainPassword = 'StrongPass987!';
+        await db.collection('user').insertOne({
+            userName: 'unverified',
+            password: await hashPass(plainPassword),
+            email: 'unverified@example.com',
+            phone: '111-222-3333',
+            firstName: 'Un',
+            lastName: 'Verified',
+            verified: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+
+        const res = await request(app)
+            .post('/api/login')
+            .send({ userName: 'unverified', password: plainPassword });
+
+        expect(res.status).toBe(401);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/email is not validated/i);
+    });
 });
 
 describe('GET /api/sendCode', () => {
@@ -204,6 +328,79 @@ describe('GET /api/sendCode', () => {
         const storedCode = await db.collection('passwordVerify').findOne({ id: insertedId });
         expect(storedCode).not.toBeNull();
         expect(storedCode.code).toHaveLength(6);
+    });
+
+    it('rejects when email format is invalid', async () => {
+        const res = await request(app)
+            .get('/api/sendCode')
+            .query({ email: 'not-an-email' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/invalid email format/i);
+    });
+
+    it('rejects when email does not exist in the system', async () => {
+        const res = await request(app)
+            .get('/api/sendCode')
+            .query({ email: 'doesnotexist@example.com' });
+
+        expect(res.status).toBe(401);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/email does not exist/i);
+    });
+
+    it('returns a 553 error when sending the reset email fails', async () => {
+        const db = await connectToDatabase();
+        const email = 'resetfail@example.com';
+
+        const { insertedId } = await db.collection('user').insertOne({
+            userName: 'resetFailUser',
+            password: await hashPass('OldPass123!'),
+            email,
+            phone: '000-000-0000',
+            firstName: 'Reset',
+            lastName: 'Fail',
+            verified: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+
+        const sgMail = require('@sendgrid/mail');
+        sgMail.send.mockRejectedValueOnce(new Error('send failed'));
+
+        const res = await request(app)
+            .get('/api/sendCode')
+            .query({ email });
+
+        expect(res.status).toBe(553);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/failed to send password change code/i);
+
+        const storedCode = await db.collection('passwordVerify').findOne({ id: insertedId });
+        expect(storedCode).toBeNull();
+    });
+});
+
+describe('POST /api/checkCode', () => {
+    it('rejects when code is empty', async () => {
+        const res = await request(app)
+            .post('/api/checkCode')
+            .send({ code: '' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/missing required field/i);
+    });
+
+    it('rejects when code does not exist', async () => {
+        const res = await request(app)
+            .post('/api/checkCode')
+            .send({ code: '999999' });
+
+        expect(res.status).toBe(401);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/invalid code/i);
     });
 });
 
@@ -269,6 +466,34 @@ describe('POST /api/changePassword', () => {
         expect(res.body.success).toBe(false);
         expect(res.body.message).toMatch(/passwords do not match/i);
     });
+
+    it('rejects when required fields are missing', async () => {
+        const res = await request(app)
+            .post('/api/changePassword')
+            .send({
+                id: '',
+                newPassword: '',
+                samePassword: '',
+            });
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/missing required field/i);
+    });
+
+    it('returns an error when user id does not exist', async () => {
+        const res = await request(app)
+            .post('/api/changePassword')
+            .send({
+                id: new ObjectId().toString(),
+                newPassword: 'SomeNewPass1!',
+                samePassword: 'SomeNewPass1!',
+            });
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/no user found with that id/i);
+    });
 });
 
 describe('GET /api/verifyEmail', () => {
@@ -299,6 +524,45 @@ describe('GET /api/verifyEmail', () => {
 
         const verifiedUser = await db.collection('user').findOne({ email });
         expect(verifiedUser.verified).toBe(true);
+    });
+
+    it('rejects when token is missing', async () => {
+        const res = await request(app)
+            .get('/api/verifyEmail')
+            .query({});
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/token was not provided/i);
+    });
+
+    it('rejects when token is expired', async () => {
+        const email = 'expired@example.com';
+        const expiredToken = jwt.sign(
+            { email, exp: Math.floor(Date.now() / 1000) - 60 },
+            process.env.JWT_SECRET
+        );
+
+        const res = await request(app)
+            .get('/api/verifyEmail')
+            .query({ token: expiredToken });
+
+        expect(res.status).toBe(498);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/took too long to verify/i);
+    });
+
+    it('returns an error when the user for a valid token is not found', async () => {
+        const email = 'missinguser@example.com';
+        const token = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+        const res = await request(app)
+            .get('/api/verifyEmail')
+            .query({ token });
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.message).toMatch(/user not found or already verified/i);
     });
 });
 
@@ -336,6 +600,33 @@ describe('POST /api/uploads/url', () => {
         expect(res.body.success).toBe(false);
         expect(res.body.message).toMatch(/access token required/i);
     });
+
+    it('rejects unsupported content types', async () => {
+        const { token } = await createVerifiedUserWithToken({ userName: 'invalidContentType' });
+
+        const res = await request(app)
+            .post('/api/uploads/url')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ contentType: 'application/json', ext: 'json' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toMatch(/invalid contenttype/i);
+    });
+
+    it('returns 500 when presign generation fails', async () => {
+        const { token, userId } = await createVerifiedUserWithToken({ userName: 'presignFail' });
+
+        mockGetSignedUrl.mockRejectedValueOnce(new Error('presign error'));
+
+        const res = await request(app)
+            .post('/api/uploads/url')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ contentType: 'image/jpeg', ext: 'jpg' });
+
+        expect(res.status).toBe(500);
+        expect(res.body.error).toBe('presign-failed');
+        expect(mockGetSignedUrl).toHaveBeenCalledTimes(1);
+    });
 });
 
 describe('POST /api/downloads/url', () => {
@@ -351,6 +642,253 @@ describe('POST /api/downloads/url', () => {
         expect(res.status).toBe(200);
         expect(res.body.url).toBe('https://example.com/download');
         expect(mockGetSignedUrl).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns 500 when generating a download URL fails', async () => {
+        mockGetSignedUrl.mockRejectedValueOnce(new Error('download error'));
+        const { token } = await createVerifiedUserWithToken({ userName: 'downloadFail' });
+
+        const res = await request(app)
+            .post('/api/downloads/url')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ key: 'posts/some-user/some-key.jpg' });
+
+        expect(res.status).toBe(500);
+        expect(res.body.error).toBe('sign-get-failed');
+        expect(mockGetSignedUrl).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('Notification routes', () => {
+    describe('GET /api/notifications', () => {
+        it('returns user and global notifications for an authenticated user', async () => {
+            const { token, userId } = await createVerifiedUserWithToken({ userName: 'notifyUser' });
+            const db = await connectToDatabase();
+
+            const notifications = db.collection('notifications');
+
+            await notifications.insertMany([
+                {
+                    sendTo: userId,
+                    isGlobal: false,
+                    isSeen: false,
+                    isRead: false,
+                    data: { type: 'comment', timestamp: new Date() },
+                },
+                {
+                    isGlobal: true,
+                    isSeen: false,
+                    isRead: false,
+                    data: { type: 'announcement', timestamp: new Date() },
+                },
+                {
+                    sendTo: new ObjectId().toString(),
+                    isGlobal: false,
+                    isSeen: false,
+                    isRead: false,
+                    data: { type: 'other', timestamp: new Date() },
+                },
+            ]);
+
+            const res = await request(app)
+                .get('/api/notifications')
+                .set('Authorization', `Bearer ${token}`)
+                .query({ limit: 10, skip: 0 });
+
+            expect(res.status).toBe(200);
+            expect(res.body.success).toBe(true);
+            expect(Array.isArray(res.body.data.notifications)).toBe(true);
+            expect(res.body.data.count).toBe(2);
+        });
+
+        it('rejects unauthenticated requests', async () => {
+            const res = await request(app)
+                .get('/api/notifications')
+                .query({ limit: 10, skip: 0 });
+
+            expect(res.status).toBe(401);
+            expect(res.body.success).toBe(false);
+            expect(res.body.message).toMatch(/access token required/i);
+        });
+    });
+
+    describe('GET /api/notifications/unseen-count', () => {
+        it('returns unseen notification count for the user', async () => {
+            const { token, userId } = await createVerifiedUserWithToken({ userName: 'unseenUser' });
+            const db = await connectToDatabase();
+            const notifications = db.collection('notifications');
+
+            await notifications.insertMany([
+                {
+                    sendTo: userId,
+                    isGlobal: false,
+                    isSeen: false,
+                    data: { type: 'comment', timestamp: new Date() },
+                },
+                {
+                    sendTo: userId,
+                    isGlobal: false,
+                    isSeen: true,
+                    data: { type: 'like', timestamp: new Date() },
+                },
+                {
+                    isGlobal: true,
+                    isSeen: false,
+                    data: { type: 'announcement', timestamp: new Date() },
+                },
+                {
+                    isGlobal: true,
+                    isSeen: true,
+                    data: { type: 'another', timestamp: new Date() },
+                },
+                {
+                    sendTo: new ObjectId().toString(),
+                    isGlobal: false,
+                    isSeen: false,
+                    data: { type: 'ignored', timestamp: new Date() },
+                },
+            ]);
+
+            const res = await request(app)
+                .get('/api/notifications/unseen-count')
+                .set('Authorization', `Bearer ${token}`)
+                .query({});
+
+            expect(res.status).toBe(200);
+            expect(res.body.success).toBe(true);
+            expect(res.body.data.unseenCount).toBe(2);
+        });
+
+        it('rejects unauthenticated requests', async () => {
+            const res = await request(app)
+                .get('/api/notifications/unseen-count')
+                .query({});
+
+            expect(res.status).toBe(401);
+            expect(res.body.success).toBe(false);
+            expect(res.body.message).toMatch(/access token required/i);
+        });
+    });
+
+    describe('POST /api/notifications/mark-all-seen', () => {
+        it('marks all notifications as seen and returns a refreshed token', async () => {
+            const { token, userId } = await createVerifiedUserWithToken({ userName: 'markAllUser' });
+            const db = await connectToDatabase();
+            const notifications = db.collection('notifications');
+
+            await notifications.insertMany([
+                {
+                    sendTo: userId,
+                    isGlobal: false,
+                    isSeen: false,
+                    data: { type: 'comment', timestamp: new Date() },
+                },
+                {
+                    isGlobal: true,
+                    isSeen: false,
+                    data: { type: 'announcement', timestamp: new Date() },
+                },
+            ]);
+
+            const res = await request(app)
+                .post('/api/notifications/mark-all-seen')
+                .set('Authorization', `Bearer ${token}`)
+                .send({});
+
+            expect(res.status).toBe(200);
+            expect(res.body.success).toBe(true);
+            expect(res.body.data.data.modifiedCount).toBeGreaterThanOrEqual(1);
+            expect(res.body.data.refreshedToken).toBeTruthy();
+
+            const stored = await notifications
+                .find({
+                    $or: [
+                        { sendTo: userId, isGlobal: false },
+                        { isGlobal: true },
+                    ],
+                })
+                .toArray();
+
+            expect(stored.every(n => n.isSeen === true)).toBe(true);
+        });
+    });
+
+    describe('POST /api/notifications/mark-read', () => {
+        it('marks a single notification as read', async () => {
+            const { token, userId } = await createVerifiedUserWithToken({ userName: 'markReadUser' });
+            const db = await connectToDatabase();
+            const notifications = db.collection('notifications');
+
+            const { insertedId } = await notifications.insertOne({
+                sendTo: userId,
+                isGlobal: false,
+                isSeen: false,
+                isRead: false,
+                data: { type: 'comment', timestamp: new Date() },
+            });
+
+            const res = await request(app)
+                .post('/api/notifications/mark-read')
+                .set('Authorization', `Bearer ${token}`)
+                .send({ notificationId: insertedId.toString() });
+
+            expect(res.status).toBe(200);
+            expect(res.body.success).toBe(true);
+            expect(res.body.data.refreshedToken).toBeTruthy();
+
+            const updated = await notifications.findOne({ _id: insertedId });
+            expect(updated.isRead).toBe(true);
+            expect(updated.readAt).toBeInstanceOf(Date);
+        });
+
+        it('rejects when notificationId is missing', async () => {
+            const { token } = await createVerifiedUserWithToken({ userName: 'missingIdUser' });
+
+            const res = await request(app)
+                .post('/api/notifications/mark-read')
+                .set('Authorization', `Bearer ${token}`)
+                .send({});
+
+            expect(res.status).toBe(400);
+            expect(res.body.success).toBe(false);
+            expect(res.body.message).toMatch(/notification id is required/i);
+        });
+
+        it('rejects when notificationId format is invalid', async () => {
+            const { token } = await createVerifiedUserWithToken({ userName: 'invalidIdUser' });
+
+            const res = await request(app)
+                .post('/api/notifications/mark-read')
+                .set('Authorization', `Bearer ${token}`)
+                .send({ notificationId: 'not-a-valid-object-id' });
+
+            expect(res.status).toBe(400);
+            expect(res.body.success).toBe(false);
+            expect(res.body.message).toMatch(/invalid notification id format/i);
+        });
+
+        it('returns 404 when notification is not found for the user', async () => {
+            const { token, userId } = await createVerifiedUserWithToken({ userName: 'notFoundUser' });
+            const db = await connectToDatabase();
+            const notifications = db.collection('notifications');
+
+            const { insertedId } = await notifications.insertOne({
+                sendTo: new ObjectId().toString(),
+                isGlobal: false,
+                isSeen: false,
+                isRead: false,
+                data: { type: 'comment', timestamp: new Date() },
+            });
+
+            const res = await request(app)
+                .post('/api/notifications/mark-read')
+                .set('Authorization', `Bearer ${token}`)
+                .send({ notificationId: insertedId.toString() });
+
+            expect(res.status).toBe(404);
+            expect(res.body.success).toBe(false);
+            expect(res.body.message).toMatch(/notification not found/i);
+        });
     });
 });
 
