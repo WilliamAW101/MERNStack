@@ -520,7 +520,7 @@ describe('GET /api/verifyEmail', () => {
             .query({ token });
 
         expect(res.status).toBe(200);
-        expect(res.body.success).toBe(true);
+        expect(res.text).toMatch(/successfully verified/i);
 
         const verifiedUser = await db.collection('user').findOne({ email });
         expect(verifiedUser.verified).toBe(true);
@@ -531,9 +531,8 @@ describe('GET /api/verifyEmail', () => {
             .get('/api/verifyEmail')
             .query({});
 
-        expect(res.status).toBe(400);
-        expect(res.body.success).toBe(false);
-        expect(res.body.message).toMatch(/token was not provided/i);
+        expect(res.status).toBe(200);
+        expect(res.text).toMatch(/token was not provided/i);
     });
 
     it('rejects when token is expired', async () => {
@@ -547,9 +546,8 @@ describe('GET /api/verifyEmail', () => {
             .get('/api/verifyEmail')
             .query({ token: expiredToken });
 
-        expect(res.status).toBe(498);
-        expect(res.body.success).toBe(false);
-        expect(res.body.message).toMatch(/took too long to verify/i);
+        expect(res.status).toBe(200);
+        expect(res.text).toMatch(/verification link has expired/i);
     });
 
     it('returns an error when the user for a valid token is not found', async () => {
@@ -560,9 +558,8 @@ describe('GET /api/verifyEmail', () => {
             .get('/api/verifyEmail')
             .query({ token });
 
-        expect(res.status).toBe(400);
-        expect(res.body.success).toBe(false);
-        expect(res.body.message).toMatch(/user not found or already verified/i);
+        expect(res.status).toBe(200);
+        expect(res.text).toMatch(/user not found or email already verified/i);
     });
 });
 
