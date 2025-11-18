@@ -243,6 +243,14 @@ class _PostCardState extends State<PostCard> {
               _isLiked = serverIsLiked;
             }
           });
+          
+          // Notify parent with updated post
+          widget.onPostUpdated?.call(
+            widget.post.copyWith(
+              likeCount: serverLikeCount ?? _likeCount,
+              isLiked: serverIsLiked ?? _isLiked,
+            ),
+          );
         }
         widget.onLikeChanged?.call();
       } else {
@@ -345,8 +353,7 @@ class _PostCardState extends State<PostCard> {
           }
         }
       } catch (e) {
-        print('Error fetching updated post: $e');
-        // Fallback: just refresh the entire feed
+        // Silently fail and fallback: just refresh the entire feed
         widget.onLikeChanged?.call();
       }
     }

@@ -62,10 +62,9 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   Future<void> _loadCurrentUser() async {
     final sp = await SharedPreferences.getInstance();
     _currentUserName = sp.getString('userName') ?? '';
-    _currentUserProfilePic = sp.getString('profilePicture');
     
-    // If profile picture is not cached, fetch it from the server
-    if ((_currentUserProfilePic == null || _currentUserProfilePic!.isEmpty) && _currentUserName.isNotEmpty) {
+    // Always fetch fresh profile picture from server (don't use cached URL as it may be expired)
+    if (_currentUserName.isNotEmpty) {
       try {
         final profileResp = await Api.getProfileInfo(userName: _currentUserName);
         if (profileResp['status'] == 200 && profileResp['data']['data'] != null) {
@@ -73,7 +72,6 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
           final userInfo = profileData['userInfo'];
           final profilePicUrl = userInfo?['userProfilePic'];
           if (profilePicUrl != null && profilePicUrl.isNotEmpty) {
-            await sp.setString('profilePicture', profilePicUrl);
             if (mounted) {
               setState(() {
                 _currentUserProfilePic = profilePicUrl;
@@ -83,7 +81,6 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
         }
       } catch (e) {
         // Silently fail if profile fetch doesn't work
-        print('Failed to fetch profile picture: $e');
       }
     }
   }
@@ -283,14 +280,12 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
         );
       } else {
         // Show error message if API returns failure
-        final errorMsg = resp['data']?['message']?.toString() ?? 'Failed to post comment';
-        print('Comment post failed: $errorMsg');
+        final errorMsg = resp['data']['message'] ?? 'Failed to post comment';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(errorMsg)),
         );
       }
     } catch (e) {
-      print('Comment post error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error posting comment: $e')),

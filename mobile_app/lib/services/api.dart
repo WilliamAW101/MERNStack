@@ -44,7 +44,6 @@ class Api {
         }
       } catch (e) {
         // If profile fetch fails, continue with login - profile picture is not critical
-        print('Failed to fetch profile picture: $e');
       }
     }
     return {'status': res.statusCode, 'data': data};

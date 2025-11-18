@@ -32,11 +32,14 @@ class _ProfilePageState extends State<ProfilePage> {
   // Profile data
   Map<String, dynamic>? _userInfo;
   List<PostModel> _posts = [];
+  List<PostModel> _favoritePosts = [];
   int _totalPostsCount = 0; // Total posts from backend
   bool _loading = true;
   bool _loadingMore = false;
   String? _nextCursor;
+  String? _favoriteNextCursor;
   bool _hasMore = true;
+  bool _favoriteHasMore = true;
   bool _uploadingProfilePic = false;
   
   final ScrollController _scrollController = ScrollController();
@@ -57,8 +60,16 @@ class _ProfilePageState extends State<ProfilePage> {
 
   void _onScroll() {
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
-      if (!_loadingMore && _hasMore && _filter == 0) {
-        _loadMorePosts();
+      if (_filter == 0) {
+        // Feed tab - load more personal posts
+        if (!_loadingMore && _hasMore) {
+          _loadMorePosts();
+        }
+      } else if (_filter == 1) {
+        // Favorites tab - load more favorite posts
+        if (!_loadingMore && _favoriteHasMore) {
+          _loadMoreFavoritePosts();
+        }
       }
     }
   }
@@ -141,6 +152,55 @@ class _ProfilePageState extends State<ProfilePage> {
           _posts.addAll(newPosts);
           _nextCursor = resp['data']['data']['nextCursor'];
           _hasMore = newPosts.length >= 6;
+          _loadingMore = false;
+        });
+      } else {
+        setState(() => _loadingMore = false);
+      }
+    } catch (e) {
+      setState(() => _loadingMore = false);
+    }
+  }
+
+  Future<void> _loadFavoritePosts() async {
+    try {
+      final resp = await Api.getHomePage();
+      if (resp['status'] == 200 && mounted) {
+        final postsData = resp['data']['data']['posts'] as List?;
+        final allPosts = postsData?.map((p) => PostModel.fromJson(p)).toList() ?? [];
+        
+        // Filter to show only liked posts
+        final likedPosts = allPosts.where((post) => post.isLiked).toList();
+        
+        setState(() {
+          _favoritePosts = likedPosts;
+          _favoriteNextCursor = resp['data']['data']['nextCursor'];
+          _favoriteHasMore = allPosts.length >= 5; // Keep loading if we got a full page
+        });
+      }
+    } catch (e) {
+      // Error loading favorite posts
+    }
+  }
+
+  Future<void> _loadMoreFavoritePosts() async {
+    if (_favoriteNextCursor == null || _loadingMore) return;
+    
+    setState(() => _loadingMore = true);
+    
+    try {
+      final resp = await Api.getHomePage(lastTimestamp: _favoriteNextCursor);
+      if (resp['status'] == 200 && mounted) {
+        final postsData = resp['data']['data']['posts'] as List?;
+        final allPosts = postsData?.map((p) => PostModel.fromJson(p)).toList() ?? [];
+        
+        // Filter to show only liked posts
+        final likedPosts = allPosts.where((post) => post.isLiked).toList();
+        
+        setState(() {
+          _favoritePosts.addAll(likedPosts);
+          _favoriteNextCursor = resp['data']['data']['nextCursor'];
+          _favoriteHasMore = allPosts.length >= 5;
           _loadingMore = false;
         });
       } else {
@@ -775,7 +835,11 @@ class _ProfilePageState extends State<ProfilePage> {
                         _FilterChipPill(
                           label: 'Favorites',
                           selected: _filter == 1,
-                          onTap: () => setState(() => _filter = 1),
+                          onTap: () {
+                            setState(() => _filter = 1);
+                            // Always reload favorites to get fresh data
+                            _loadFavoritePosts();
+                          },
                           selectedColor: cs.primary,
                         ),
                         const SizedBox(width: 10),
@@ -840,8 +904,8 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                     ] else ...[
-                      // Favorites - show only liked posts
-                      if (_posts.where((post) => post.isLiked).isEmpty)
+                      // Favorites - show only liked posts from all users
+                      if (_favoritePosts.isEmpty)
                         Center(
                           child: Padding(
                             padding: const EdgeInsets.all(32),
@@ -870,29 +934,44 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         )
                       else
-                        ..._posts.where((post) => post.isLiked).toList().asMap().entries.map((entry) {
-                          final post = entry.value;
-                          final originalIndex = _posts.indexOf(post);
+                        ..._favoritePosts.map((post) {
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 12),
                             child: PostCard(
                               post: post,
                               onPostDeleted: () {
-                                // Remove the post from the list immediately
+                                // Remove the post from the favorites list immediately
                                 setState(() {
-                                  _posts.removeAt(originalIndex);
-                                  _totalPostsCount = _totalPostsCount > 0 ? _totalPostsCount - 1 : 0;
+                                  _favoritePosts.removeWhere((p) => p.id == post.id);
                                 });
                               },
                               onPostUpdated: (updatedPost) {
-                                // Update the post in the list immediately
+                                // Update the post in the favorites list immediately
                                 setState(() {
-                                  _posts[originalIndex] = updatedPost;
+                                  if (updatedPost.isLiked) {
+                                    // Find and update the post by ID
+                                    final index = _favoritePosts.indexWhere((p) => p.id == updatedPost.id);
+                                    if (index != -1) {
+                                      _favoritePosts[index] = updatedPost;
+                                    }
+                                  } else {
+                                    // Post was unliked, remove it from favorites
+                                    _favoritePosts.removeWhere((p) => p.id == updatedPost.id);
+                                  }
                                 });
                               },
                             ),
                           );
                         }),
+                      
+                      // Loading more indicator for favorites
+                      if (_loadingMore)
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Center(
+                            child: CircularProgressIndicator(color: cs.primary),
+                          ),
+                        ),
                     ],
                   ],
                 ),
