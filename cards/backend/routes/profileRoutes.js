@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { ObjectId } = require('mongodb');
 
-const { 
+const {
     authenticateToken
 } = require('../middleware/authMiddleware.js');
 const {
@@ -19,11 +19,12 @@ const {
 } = require('../utils/authentication.js');
 const {
     grabURL
-} = require('../utils/aws.js')
+} = require('../utils/aws.js');
+const { auth } = require('googleapis/build/src/apis/abusiveexperiencereport/index.js');
 
 router.get('/personalPosts', authenticateToken, async (req, res) => {
     try {
-        
+
         // payload receiving
         const requiredFields = {
             userName,
@@ -44,30 +45,30 @@ router.get('/personalPosts', authenticateToken, async (req, res) => {
         const userCollection = db.collection('user');
 
         const user = await userCollection.findOne({ userName });
-        
+
         if (user == null) {
             return responseJSON(res, false, { code: 'Not Found' }, 'User not found', 404);
         }
 
         let query = {
             timestamp: { $lt: new Date() }, // current time
-            userId: user._id.toString()
+            userId: user._id
         };
         if (lastTimestamp && !isNaN(Date.parse(lastTimestamp))) {
             query.timestamp = { $lt: new Date(lastTimestamp) };
         }
 
         let posts = await postCollection.find(query).sort({ timestamp: -1 }).limit(6).toArray(); // fetch 10 latest posts before the lastTimestamp if provided
-        const nextCursor =  posts.length ? posts[posts.length - 1].timestamp : null // provide front-end with next cursor if there are more posts to fetch
+        const nextCursor = posts.length ? posts[posts.length - 1].timestamp : null // provide front-end with next cursor if there are more posts to fetch
 
         // we want to have frontend be given the first 3 comments for each post so they can display them for preview
         posts = await grabPosts(res, req, posts, db);
         if (posts == null)
             return;
-        
+
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
-        
-        responseJSON(res, true, { posts, nextCursor, refreshedToken}, 'profile endpoint success', 200);
+
+        responseJSON(res, true, { posts, nextCursor, refreshedToken }, 'profile endpoint success', 200);
     } catch (e) {
         error = e.toString();
         responseJSON(res, false, { code: 'Internal server error' }, 'personalPosts endpoint failed ' + error, 500);
@@ -91,7 +92,7 @@ router.get('/getProfileInfo', authenticateToken, async (req, res) => {
 
         const db = await connectToDatabase();
         const userCollection = db.collection('user');
-        const postCollection= db.collection('post');
+        const postCollection = db.collection('post');
 
         const userInfo = await userCollection.findOne({ userName: userName });
         if (!userInfo) {
@@ -99,9 +100,9 @@ router.get('/getProfileInfo', authenticateToken, async (req, res) => {
         }
 
         const numberOfTotalPosts = await postCollection.countDocuments({
-            userId: userInfo._id.toString()
+            userId: userInfo._id
         });
-        
+
         if (userInfo.profilePicture && userInfo.profilePicture.key)
             profileImageURL = await grabURL(userInfo.profilePicture.key);
         else
@@ -110,57 +111,56 @@ router.get('/getProfileInfo', authenticateToken, async (req, res) => {
 
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 
-        responseJSON(res, true, { userInfo, refreshedToken, numberOfTotalPosts}, 'getProfileInfo endpoint success', 200);
+        responseJSON(res, true, { userInfo, refreshedToken, numberOfTotalPosts }, 'getProfileInfo endpoint success', 200);
     } catch (e) {
         error = e.toString();
         responseJSON(res, false, { code: 'Internal server error' }, 'getProfileInfo endpoint failed ' + error, 500);
     }
 });
 
-router.post('/changeProfileInfo', authenticateToken, async (req, res) => {
+router.put('/changeProfileInfo', authenticateToken, async (req, res) => {
     try {
         const db = await connectToDatabase();
+        const userId = new ObjectId(req.user.id);
+        console.log(userId);
         const userCollection = db.collection('user');
-
         const {
-            userName,
-            phone, 
-            firstName, 
+            phone,
+            firstName,
             lastName,
             profileDescription
         } = req.body;
 
-        const userInfo = await userCollection.findOne({ userName: userName });
+        const userInfo = await userCollection.findOne({ _id: userId });
+        console.log(userInfo);
         if (!userInfo) {
             return responseJSON(res, false, { code: 'Not found' }, 'User not found', 404);
         }
 
         // we want to only update if changed
         const updateFields = {};
-        if (phone != "") 
+        if (phone != "")
             updateFields.phone = phone;
         else
             updateFields.phone = userInfo.phone;
 
-        if (firstName != "") 
+        if (firstName != "")
             updateFields.firstName = firstName;
         else
             updateFields.firstName = userInfo.firstName;
 
-        if (lastName != "") 
+        if (lastName != "")
             updateFields.lastName = lastName;
         else
             updateFields.lastName = userInfo.lastName;
 
-        if (profileDescription != "") 
+        if (profileDescription != "")
             updateFields.profileDescription = profileDescription;
         else
             updateFields.profileDescription = userInfo.profileDescription;
 
         // Update the timestamp
         updateFields.updatedAt = new Date();
-
-        updateFields.profilePicture = null;
 
         // Update the user
         const result = await userCollection.updateOne(
@@ -171,9 +171,10 @@ router.post('/changeProfileInfo', authenticateToken, async (req, res) => {
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 
         // Get updated user info
-        const updatedUser = await userCollection.findOne({ userName: userName })
+        const updatedUser = await userCollection.findOne({ _id: userId })
+        console.log(updatedUser);
 
-        responseJSON(res, true, { updatedUser, refreshedToken}, 'changeProfile endpoint success', 200);
+        responseJSON(res, true, { updatedUser, refreshedToken }, 'changeProfile endpoint success', 200);
     } catch (e) {
         error = e.toString();
         responseJSON(res, false, { code: 'Internal server error' }, 'changeProfile endpoint failed ' + error, 500);
@@ -183,7 +184,7 @@ router.post('/changeProfileInfo', authenticateToken, async (req, res) => {
 router.post('/uploadProfilePictureKey', authenticateToken, async (req, res) => {
     try {
         // we need the content type of image and extension
-        const { 
+        const {
             key
         } = req.body;
 
@@ -198,7 +199,7 @@ router.post('/uploadProfilePictureKey', authenticateToken, async (req, res) => {
         const user = await userCollection.updateOne(
             { _id: new ObjectId(req.user.id) },
             {
-                $set: { 
+                $set: {
                     profilePicture: {
                         provider: 's3',
                         key: key,
@@ -217,12 +218,15 @@ router.post('/uploadProfilePictureKey', authenticateToken, async (req, res) => {
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 
         return responseJSON(res, true, { refreshedToken }, 'Upload URL generated and uploaded to database', 200);
-        
+
     } catch (e) {
         error = e.toString();
         responseJSON(res, false, { code: 'Internal server error' }, 'uploadProfilePicture endpoint failed ' + error, 500);
     }
 });
+
+// OLD notification endpoints removed - now using /api/notifications endpoints
+// See routes/notificationRoutes.js for the new Facebook-style notification system
 
 
 module.exports = router;

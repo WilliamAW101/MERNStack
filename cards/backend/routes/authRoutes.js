@@ -14,7 +14,8 @@ const {
     sendVerificationEmail,
     checkExpired,
     genResetCode,
-    sendPasswordChangeToken
+    sendPasswordChangeToken,
+    getVerificationHTML
 } = require('../utils/authentication.js');
 
 const {
@@ -250,11 +251,12 @@ router.post('/checkCode', async (req, res) => {
 // payload will need a verification code that will be sent via email that the user has verified
 router.post('/changePassword', async (req, res) => {
     const requiredFields = {
-        code,
+        id,
         newPassword,
         samePassword
     } = req.body;
 
+    // check to see if everything is filled out
     const missingFields = Object.entries(requiredFields)
         .filter(([, value]) => value === undefined || value === null || value === '')
         .map(([key]) => key);
@@ -262,66 +264,99 @@ router.post('/changePassword', async (req, res) => {
         return responseJSON(res, false, { code: 'Bad Request' }, `Missing required field${missingFields.length > 1 ? 's' : ''}: ${missingFields.join(', ')}`, 400);
     }
 
-    if (requiredFields.newPassword !== requiredFields.samePassword) {
-        return responseJSON(res, false, { code: 'Unauthorized' }, 'Passwords do not match', 401);
-    }
+    if (requiredFields.newPassword != requiredFields.samePassword)
+        return responseJSON(res, false, { code: 'Unauthorized' }, 'Passwords do not match', 401)
 
+    // change the password
     const db = await connectToDatabase();
     const userCollection = db.collection('user');
-    const codeCollection = db.collection('passwordVerify');
-
-    const verification = await codeCollection.findOne({ code: requiredFields.code });
-    if (!verification) {
-        return responseJSON(res, false, { code: 'Unauthorized' }, 'Invalid Code', 401);
-    }
-
     const hashedPassword = await hashPass(requiredFields.newPassword);
-    const userId = new ObjectId(verification.id);
 
+    const userId = new ObjectId(requiredFields.id);
+    // replace the old password with new
     const result = await userCollection.updateOne(
-        { _id: userId },
-        { $set: { password: hashedPassword } }
+        {_id: userId},
+        { $set: {password: hashedPassword} }
     );
 
+    const ret = {
+      id: result.insertedId,
+    };
+
     if (result.matchedCount === 0) {
-        return responseJSON(res, false, { code: 'Not Found' }, 'No user found with that ID.', 404);
+      responseJSON(res, false, ret, 'No user found with that ID.', 400);
+      return;
+    } else if (result.modifiedCount === 0) {
+      responseJSON(res, false, ret, 'Password was not updated (maybe same as old one).', 401);
+      return;
+    } else {
+      console.log("Password successfully updated!");
     }
-
-    await codeCollection.deleteOne({ code: requiredFields.code });
-
     responseJSON(res, true, 'Password has been changed', 'Password Change Success!', 201);
 });
 
 
-// Front end does not need to know this crap exists, just that it works
+// // Front end does not need to know this crap exists, just that it works
+// router.get('/verifyEmail', async (req, res) => {
+//     try {
+        
+//         const db = await connectToDatabase();
+//         const collection = db.collection('user');
+
+//         const token = req.query.token;
+//         if (!token)
+//             return responseJSON(res, false, { code: 'Missing Token' }, 'Token was not provided', 400);
+
+//         const decodedToken = checkExpired(token);
+//         if (decodedToken == null) {
+//             return responseJSON(res, false, { code: 'Expired Token' }, 'Took too long to verify', 498);
+//         }
+
+//         const result = await collection.updateOne(
+//             { email: decodedToken.email},
+//             { $set: { verified: true}}
+//         );
+
+//         if (result.modifiedCount == 0) {
+//             return responseJSON(res, false, { code: 'Invalid User' }, 'User not found or already verified', 400);
+//         }
+        
+//         responseJSON(res, true, 'Verification Successfull!', 'User has been successfully verified!', 200);
+//     } catch (e) {
+//         error = e.toString();
+//         responseJSON(res, false, { code: 'Internal server error' }, 'Couldnt Communicate with endpoint', 500);
+//     }
+// });
+
 router.get('/verifyEmail', async (req, res) => {
     try {
-        
         const db = await connectToDatabase();
         const collection = db.collection('user');
-
         const token = req.query.token;
-        if (!token)
-            return responseJSON(res, false, { code: 'Missing Token' }, 'Token was not provided', 400);
-
+        
+        if (!token) {
+            return res.send(getVerificationHTML(false, 'Token was not provided'));
+        }
+        
         const decodedToken = checkExpired(token);
         if (decodedToken == null) {
-            return responseJSON(res, false, { code: 'Expired Token' }, 'Took too long to verify', 498);
+            return res.send(getVerificationHTML(false, 'Verification link has expired. Please request a new one.'));
         }
-
+        
         const result = await collection.updateOne(
             { email: decodedToken.email},
             { $set: { verified: true}}
         );
-
+        
         if (result.modifiedCount == 0) {
-            return responseJSON(res, false, { code: 'Invalid User' }, 'User not found or already verified', 400);
+            return res.send(getVerificationHTML(false, 'User not found or email already verified'));
         }
         
-        responseJSON(res, true, 'Verification Successfull!', 'User has been successfully verified!', 200);
+        return res.send(getVerificationHTML(true, 'Your email has been successfully verified! You can now log in.'));
+        
     } catch (e) {
-        error = e.toString();
-        responseJSON(res, false, { code: 'Internal server error' }, 'Couldnt Communicate with endpoint', 500);
+        console.error(e);
+        return res.send(getVerificationHTML(false, 'An error occurred during verification. Please try again.'));
     }
 });
 

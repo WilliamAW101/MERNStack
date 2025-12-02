@@ -15,57 +15,61 @@ const {
 const {
     getCommentImageURL
 } = require('../utils/posts.js');
+const {
+    sendNotification
+} = require('../utils/notifs.js');
 
 router.post('/addPost', authenticateToken, async (req, res) => {
-  // Payload in: { caption, difficulty, rating, images?: [{ key, type }], location? }
-  // Payload out: { postId, timestamp, error }
-  try {
-    const { caption, difficulty, rating, images, location } = req.body;
+    // Payload in: { caption, difficulty, rating, images?: [{ key, type }], location? }
+    // Payload out: { postId, timestamp, error }
+    try {
+        const { caption, difficulty, rating, images, location } = req.body;
 
-    // auth
-    const userId = new ObjectId(req.user.id);
+        // auth
+        const userId = new ObjectId(req.user.id);
 
-    // basic validation
-    if (!caption) return res.status(400).json({ error: 'Caption is required' });
-    if (difficulty === undefined || difficulty === null)
-      return res.status(400).json({ error: 'Difficulty is required' });
-    if (rating === undefined || rating === null)
-      return res.status(400).json({ error: 'Rating is required' });
+        // basic validation
+        if (!caption) return res.status(400).json({ error: 'Caption is required' });
+        if (difficulty === undefined || difficulty === null)
+            return res.status(400).json({ error: 'Difficulty is required' });
+        if (rating === undefined || rating === null)
+            return res.status(400).json({ error: 'Rating is required' });
 
-    if (typeof difficulty !== 'number' || difficulty < 0)
-      return res.status(400).json({ error: 'Difficulty must be a non-negative number' });
-    if (typeof rating !== 'number' || rating < 0)
-      return res.status(400).json({ error: 'Rating must be a non-negative number' });
+        if (typeof difficulty !== 'number' || difficulty < 0)
+            return res.status(400).json({ error: 'Difficulty must be a non-negative number' });
+        if (typeof rating !== 'number' || rating < 0)
+            return res.status(400).json({ error: 'Rating must be a non-negative number' });
 
-    // sanitize images: keep only valid S3 keys and type (image|video)
-    const safeImages = Array.isArray(images)
-      ? images
-          .filter(m => m && typeof m.key === 'string' && m.key.trim().length > 0)
-          .map(m => ({
-            provider: 's3',
-            key: m.key,
-            type: m.type === 'video' ? 'video' : 'image'
-          }))
-      : null;
+        // sanitize images: keep only valid S3 keys and type (image|video)
+        const safeImages = Array.isArray(images)
+            ? images
+                .filter(m => m && typeof m.key === 'string' && m.key.trim().length > 0)
+                .map(m => ({
+                    provider: 's3',
+                    key: m.key,
+                    type: m.type === 'video' ? 'video' : 'image'
+                }))
+            : null;
 
-    const db = await connectToDatabase();
-    const collection = db.collection('post');
+        const db = await connectToDatabase();
+        const collection = db.collection('post');
+        const userCollection = db.collection('user');
 
-    const timestamp = new Date();
+        const timestamp = new Date();
 
-    const newPost = {
-      userId,
-      caption,
-      difficulty,
-      rating,
-      images: safeImages,         // e.g., [{ provider:'s3', key:'posts/uid/uuid.jpg', type:'image' }]
-      location: location || null,
-      timestamp,
-      likeCount: 0,
-      commentCount: 0,
-    };
+        const newPost = {
+            userId,
+            caption,
+            difficulty,
+            rating,
+            images: safeImages,         // e.g., [{ provider:'s3', key:'posts/uid/uuid.jpg', type:'image' }]
+            location: location || null,
+            timestamp,
+            likeCount: 0,
+            commentCount: 0,
+        };
 
-    const result = await collection.insertOne(newPost);
+        const result = await collection.insertOne(newPost);
 
         const data = {
             postId: result.insertedId,
@@ -86,7 +90,7 @@ router.put('/updatePost', authenticateToken, async (req, res) => {
         const { postId, caption, images, difficulty, rating, location } = req.body;
 
         // Get userId from authenticated token
-        const userId = req.user.id;
+        const userId = new ObjectId(req.user.id);
 
         // Validate required fields
         if (!postId) {
@@ -110,7 +114,7 @@ router.put('/updatePost', authenticateToken, async (req, res) => {
             return responseJSON(res, false, { code: 'Not Found' }, 'Post not found', 404);
         }
 
-        if (post.userId !== userId) {
+        if (post.userId.toString() !== userId.toString() ) {
             return responseJSON(res, false, { code: 'Forbidden' }, 'You do not have permission to update this post', 403);
         }
 
@@ -123,21 +127,18 @@ router.put('/updatePost', authenticateToken, async (req, res) => {
             }
             updateFields.caption = caption.trim();
         }
-
-        if (images !== undefined) {
-            // Sanitize images: keep only valid S3 keys and type (image|video)
-            const safeImages = Array.isArray(images)
-                ? images
-                    .filter(m => m && typeof m.key === 'string' && m.key.trim().length > 0)
-                    .map(m => ({
-                        provider: 's3',
-                        key: m.key,
-                        type: m.type === 'video' ? 'video' : 'image'
-                    }))
-                : null;
-            updateFields.images = safeImages;
-        }
-
+        console.log('Images received for update:', images);
+        const safeImages = Array.isArray(images)
+            ? images
+                .filter(m => m && typeof m.key === 'string' && m.key.trim().length > 0)
+                .map(m => ({
+                    provider: 's3',
+                    key: m.key,
+                    type: m.type === 'video' ? 'video' : 'image'
+                }))
+            : null;
+        updateFields.images = safeImages;
+        
         if (difficulty !== undefined) {
             if (typeof difficulty !== 'number' || difficulty < 0) {
                 return responseJSON(res, false, { code: 'Bad Request' }, 'Difficulty must be a non-negative number', 400);
@@ -171,11 +172,26 @@ router.put('/updatePost', authenticateToken, async (req, res) => {
             { returnDocument: 'after' }
         );
 
-        const data = {
-            post: result
-        };
+        // Convert S3 keys to URLs
+        result.imageURLs = null;
+        const imageURLs = [];
+        if (Array.isArray(result.images) && result.images.length > 0) {
+            for (const image of result.images) {
+                if (image.key) {
+                    console.log('Grabbing URL for image key:', image.key);
+                    const imageURL = await grabURL(image.key);
+                    if (imageURL == null) {
+                        return responseJSON(res, false, { code: 'AWS error' }, 'Failed to grab image URL', 500);
+                    }
+                    imageURLs.push(imageURL);
+                }
+            }
+        }
+        result.imageURLs = imageURLs;
 
-        return responseJSON(res, true, data, 'Post updated successfully!', 200);
+        const refreshedToken = refreshToken(req.user.token);
+
+        return responseJSON(res, true, { post: result, refreshedToken }, 'Post updated successfully!', 200);
     } catch (e) {
         console.error('Update post error:', e);
         return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to update post', 500);
@@ -215,7 +231,7 @@ router.delete('/deletePost', authenticateToken, async (req, res) => {
             return responseJSON(res, false, { code: 'Not Found' }, 'Post not found', 404);
         }
 
-        if (post.userId !== userId) {
+        if (post.userId.toString() !== userId.toString()) {
             return responseJSON(res, false, { code: 'Forbidden' }, 'You do not have permission to delete this post', 403);
         }
 
@@ -284,7 +300,7 @@ router.get('/getPost', authenticateToken, async (req, res) => {
             .find({ post_id: postObjectId })
             .limit(20).toArray();
 
-        
+
         const user = await userCollection.findOne({ _id: new ObjectId(post.userId) });
         if (user.profilePicture && user.profilePicture.key)
             profileImageURL = await grabURL(user.profilePicture.key);
@@ -310,13 +326,6 @@ router.get('/getPost', authenticateToken, async (req, res) => {
         post.profileImageURL = profileImageURL;
         post.comments = comments;
         post.likes = likes;
-
-        // const data = {
-        //     post,
-        //     profileImageURL,
-        //     comments,
-        //     likes
-        // };
 
         return responseJSON(res, true, post, 'Post retrieved successfully!', 200);
     } catch (e) {
@@ -386,9 +395,26 @@ router.post('/addComment', authenticateToken, async (req, res) => {
             timestamp
         };
 
+        // send notification
+        if (post.userId != userId.toString()) { // dont sent notif if it is user's own post
+            const notif = req.app.get('socketio');
+            const notificationData = {
+                type: 'Comment',
+                message: `${userName} made a comment on your post`,
+                data: {
+                    postId: post._id,
+                    commentorId: userId,
+                    commentorUsername: userName,
+                    commentId: result.insertedId,
+                    timestamp: new Date()
+                }
+            }
+            await sendNotification(notif, notificationData, db, post.userId.toString(), false);
+        }
+
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 
-        return responseJSON(res, true, { data,  refreshedToken },  'Comment added successfully!', 201);
+        return responseJSON(res, true, { data, refreshedToken }, 'Comment added successfully!', 201);
     } catch (e) {
         console.error('Add comment error:', e);
         return responseJSON(res, false, { code: 'Internal server error' }, 'Failed to add comment', 500);
@@ -414,7 +440,7 @@ router.delete('/deleteComment', authenticateToken, async (req, res) => {
         if (result.deletedCount == 0) {
             return responseJSON(res, false, { code: 'Not Found' }, 'Comment not found and failed to delete', 404);
         }
-        
+
         const refreshedToken = refreshToken(req.user.token); // get refreshed token from middleware
 
         return responseJSON(res, true, { refreshedToken }, 'Comment deleted successfully!', 201);
@@ -438,8 +464,8 @@ router.post('/changeComment', authenticateToken, async (req, res) => {
 
         await commentCollection.updateOne(
             { _id: ID },
-            {  
-                $set: { 
+            {
+                $set: {
                     commentText: text,
                     updatedAt: new Date()
                 }
@@ -463,7 +489,6 @@ router.post('/likePost', authenticateToken, async (req, res) => {
 
         // Get userId and userName from authenticated token
         const userId = req.user.id;
-        const userName = req.user.userName;
 
         // Validate required fields
         if (!postId) {
@@ -531,6 +556,25 @@ router.post('/likePost', authenticateToken, async (req, res) => {
                 { _id: postObjectId },
                 { $inc: { likeCount: 1 } }
             );
+
+            // send notification
+            if (post.userId != userObjectId.toString()) { // dont sent notif if it is user's own post
+                const notif = req.app.get('socketio');
+                const userCollection = db.collection('user');
+
+                const user = await userCollection.findOne({ _id: post.userId });
+                const notificationData = {
+                    type: 'Like',
+                    message: `${req.user.userName} liked your post`,
+                    data: {
+                        postId: postId,
+                        LikerId: req.user.id,
+                        LikerUsername: req.user.userName,
+                        timestamp: new Date()
+                    }
+                }
+                await sendNotification(notif, notificationData, db, post.userId.toString(), false);
+            }
 
             isLiked = true;
             message = 'Post liked successfully!';

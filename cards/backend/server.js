@@ -1,22 +1,32 @@
+// Cleaned this crap up
+
 const app = require('./app');
+const { Server } = require('socket.io');
+const http = require('http');
 const PORT = process.env.PORT || 5000;
 
-// Only start the HTTP listener when this file is executed directly.
-if (require.main === module) {
-    app.listen(PORT, () => {
-        console.log(`Server listening on port ${PORT}`);
-    });
-}
+// this socket crap needs to use http.createServer
+const serverHost = http.createServer(app);
 
-// CORS headers (redundant with cors() but kept for explicit control)...Kool
-app.use((req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader(
-        'Access-Control-Allow-Headers',
-        'Origin, X-Requested-With, Content-Type, Accept, Authorization'
-    );
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-    next();
+const socketIOServer = new Server(serverHost, {
+    cors: {
+        origin: [
+            process.env.CLIENT_URL || "http://localhost:3000",
+            "https://cragtag.vercel.app",
+            "https://crag-tag.vercel.app"
+        ],
+        methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+        credentials: true
+    }
 });
 
-module.exports = app;
+require('./config/socket')(socketIOServer);
+app.set('socketio', socketIOServer);
+
+require('./socket/notifsHandle')(socketIOServer);
+
+serverHost.listen(PORT, () => {
+    console.log(`Starting new and improved server on ${PORT} :D`);
+})
+
+module.exports = { app, serverHost, socketIOServer };
